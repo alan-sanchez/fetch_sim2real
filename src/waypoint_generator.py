@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Import what we need
 import rospy
@@ -39,8 +39,8 @@ class Waypoint_generator:
         self.header.stamp = rospy.Time.now()
 
         # Setup PolygonStamped for the 2D subplane
-        self.sub_plane_polygon = PolygonStamped()
-        self.sub_plane_polygon.header = self.header
+        self.region = PolygonStamped()
+        self.region = self.header
 
         # Setup PoseArray for the waypoints.
         self.waypoints = PoseArray()
@@ -58,9 +58,6 @@ class Waypoint_generator:
         self.waypoints_marker.color.r = 0
         self.waypoints_marker.color.g = 0
         self.waypoints_marker.color.b = 1.0
-
-        # Intialize the inverse tranform matrix.
-        self.M_inv = None
 
         # Set the offset
         # self.offset = .3
@@ -82,30 +79,50 @@ class Waypoint_generator:
         self.assign_goal()
 
     def assign_goal(self):
-        # Create the x and y coordinates of the disinfection region verticies
-        region = [[0.65, 0.45], [0.85, 0.45], [0.85, 0.10], [0.65, 0.10]]
+        # Create the x,y, and z coordinates of the disinfection region verticies
+        verticies = [[0.65, 0.45, 0.63], [0.85, 0.45, 0.63], [0.85, 0.10,0.63], [0.65, 0.10, 0.63]]
 
-        for i in range(len(x_coord)):
-            self.sub_plane_polygon.polygon.points.append(Point32(x_coord[i], y_coord[i], 0))
-
+        for i in range(len(region_verticies)):
+            self.region.polygon.points.append(Point32(verticies[i][0], verticies[i][1], verticies[i][2]))
 
 
         start_pose = PoseStamped()
         start_pose.header = self.header
-        start_pose.pose.position.x    = self.sub_plane_polygon.polygon.points[0].x
-        start_pose.pose.position.y    = self.sub_plane_polygon.polygon.points[0].y
-        start_pose.pose.position.z    = self.sub_plane_polygon.polygon.points[0].z
+        start_pose.pose.position.x    = self.region.polygon.points[0].x
+        start_pose.pose.position.y    = self.region.polygon.points[0].y
+        start_pose.pose.position.z    = self.region.polygon.points[0].z
         start_pose.pose.orientation.x = 0.0
         start_pose.pose.orientation.y = 0.0
         start_pose.pose.orientation.z = 0.0
         start_pose.pose.orientation.w = 1.0
 
         goal = PlanMowingPathGoal(property=self.sub_plane_polygon,robot_position=start_pose)
-        self.coverage_client.send_goal(goal, done_cb=self.done_callback)
-        self.coverage_client.wait_for_result()
+        # self.coverage_client.send_goal(goal, done_cb=self.done_callback)
+        # self.coverage_client.wait_for_result()
 
 
     def done_callback(self, status, result):
+
+        poses = []
+        marker_list = []
+        # print("")
+        # print(result.plan.points[0].point.x)
+        for i in range(len(result.plan.points)):
+            arr_2D = np.array([result.plan.points[i].point.x, result.plan.points[i].point.y, 0, 1])
+            dim_incr = np.matmul(self.M_inv, arr_2D)
+
+            p = Pose()
+            p.position.x = dim_incr[0]
+            p.position.y = dim_incr[1]
+            p.position.z = dim_incr[2]
+            p.orientation.x = 0.0
+            p.orientation.y = 0.0
+            p.orientation.z = 0.0
+            p.orientation.w = 1.0
+            poses.append(p)
+
+            marker_list.append(Point(p.position.x, p.position.y, p.position.z))
+
         # for i in range(len(px)):
         #             # Get index values closest neighbors of the planned x and y values
         #             # in the KDtree
@@ -143,26 +160,6 @@ class Waypoint_generator:
         #             self.waypoints_marker.id = i
         #             self.waypoints_marker.pose = p
         #             self.waypoints_marker_pub.publish(self.waypoints_marker)
-        poses = []
-        marker_list = []
-        # print("")
-        # print(result.plan.points[0].point.x)
-        for i in range(len(result.plan.points)):
-            arr_2D = np.array([result.plan.points[i].point.x, result.plan.points[i].point.y, 0, 1])
-            dim_incr = np.matmul(self.M_inv, arr_2D)
-
-            p = Pose()
-            p.position.x = dim_incr[0]
-            p.position.y = dim_incr[1]
-            p.position.z = dim_incr[2]
-            p.orientation.x = 0.0
-            p.orientation.y = 0.0
-            p.orientation.z = 0.0
-            p.orientation.w = 1.0
-            poses.append(p)
-
-            marker_list.append(Point(p.position.x, p.position.y, p.position.z))
-
         self.waypoints_marker.points = marker_list
         self.waypoints_marker_pub.publish(self.waypoints_marker)
 
