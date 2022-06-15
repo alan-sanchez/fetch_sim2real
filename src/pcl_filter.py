@@ -22,13 +22,6 @@ class pcl_filter:
         # Initialize PointCloud Publisher
         self.pointcloud_pub = rospy.Publisher("/filtered_cloud", PointCloud, queue_size=1)
 
-        # Initialize the camera PointCloud message type. This will be transfomed
-        # to a the base_link frame_id
-        self.camera_cloud = PointCloud()
-        self.camera_cloud.header = Header()
-        self.camera_cloud.header.stamp = rospy.Time.now()
-        self.camera_cloud.header.frame_id = '/odom'
-
         # Initialize filtered_cloud as a PointCloud message type
         self.filtered_cloud = PointCloud()
         self.filtered_cloud.header = Header()
@@ -46,18 +39,19 @@ class pcl_filter:
         self.check = 0
 
 
-    def pointcloud_data(self,ros_cloud):
+    def pointcloud_data(self,cloud_data):
         if self.check == 0:
             # Store pointcloud2 data
             rospy.loginfo("received pointcloud")
 
-
-            self.camera_cloud.points=[]
+            camera_cloud = PointCloud()
+            camera_cloud.header = cloud_data.header
+            # self.camera_cloud.points=[]
             # For loop to extract ros_cloud data into a list of x,y,z, and RGB (float)
-            for data in pc2.read_points(ros_cloud, skip_nans=True):
-                self.camera_cloud.points.append(Point32(data[0],data[1],data[2]))
+            for data in pc2.read_points(cloud_data, skip_nans=True):
+                camera_cloud.points.append(Point32(data[0],data[1],data[2]))
 
-            transformed_cloud = self.transform_pointcloud(self.camera_cloud)
+            transformed_cloud = self.transform_pointcloud(camera_cloud)
             # print(transformed_cloud)
 
             # Create the x and y coordinates of the disinfection region verticies
@@ -78,17 +72,16 @@ class pcl_filter:
                 if polygon.contains(point) == True:
                     self.filtered_cloud.points.append(Point32(points.x,points.y,points.z))
 
+            self.check = 1
             # Publish filtered point_cloud data
             self.pointcloud_pub.publish(self.filtered_cloud)
-            # self.filtered_cloud[:]
 
-            self.check = 1
 
-    def transform_pointcloud(self,point_cloud):
+    def transform_pointcloud(self,camera_cloud):
         while not rospy.is_shutdown():
             try:
-                new_cloud = self.listener.transformPointCloud("/base_link" ,point_cloud)
-                # print("made it here")
+                new_cloud = self.listener.transformPointCloud("/base_link" ,camera_cloud)
+                print("made it here")
                 return new_cloud
                 if new_cloud:
                     break
