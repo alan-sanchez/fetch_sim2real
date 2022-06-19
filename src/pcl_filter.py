@@ -15,9 +15,23 @@ from std_msgs.msg import Header
 from shapely import geometry
 
 class pcl_filter:
+    """
+    A class that takes in a pointcloud 2 message and transfers the data into a
+    pointcloud message. Then the pointcloud message is filtered where only the
+    points inside the disinfectin region are considered.
+    """
     def __init__(self):
+        """
+        Function that initializes the subsribers, publishers, and other variables.
+        :param self: The self reference.
+        """
+        # Flag
+        self.flag = 0
+
         # Initialize Subscribers
-        self.pointcloud2_sub = rospy.Subscriber("/octomap_point_cloud_centers"  , PointCloud2    ,self.pointcloud_data, queue_size=1)
+        self.pointcloud2_sub = rospy.Subscriber("/octomap_point_cloud_centers", PointCloud2,    self.callback_pcl2, queue_size=1)
+        self.region_sub      = rospy.Subscriber("region",                       PolygonStamped, self.pcl_filter, queue_size=1)
+
 
         # Initialize PointCloud Publisher
         self.pointcloud_pub = rospy.Publisher("/filtered_cloud", PointCloud, queue_size=1)
@@ -28,60 +42,93 @@ class pcl_filter:
         self.filtered_cloud.header.stamp = rospy.Time.now()
         self.filtered_cloud.header.frame_id = '/base_link'
 
-        # Intialize pcl_data as an empty list
-        self.pcl_data = []
-
         # Initialize self.cloud for data storage in pointcloud_data callback function
-        self.cloud = None
+        self.pcl2_cloud = None
 
         # Intialize tf.Transformlister
         self.listener = tf.TransformListener()
-        self.check = 0
 
 
-    def pointcloud_data(self,cloud_data):
-        if self.check == 0:
-            # Store pointcloud2 data
+
+    def callback_pcl2(self,msg):
+        """
+        Callback function that stores the pointcloud2 message.
+        :param self: The self reference.
+        :param msg: The Pointcloud2 message type.
+        """
+        # Store pointcloud2 data
+        self.pcl2_cloud = msg
+
+        # Use flag condition so we don't continuously store the same octree map
+        if self.flag == 0:
             rospy.loginfo("received pointcloud")
+            self.flag = 1
 
-            camera_cloud = PointCloud()
-            camera_cloud.header = cloud_data.header
-            # self.camera_cloud.points=[]
-            # For loop to extract ros_cloud data into a list of x,y,z, and RGB (float)
-            for data in pc2.read_points(cloud_data, skip_nans=True):
-                camera_cloud.points.append(Point32(data[0],data[1],data[2]))
+    def pcl_filter(self, polygon):
+        """
+        Callback function that stores the pointcloud2 message.
+        :param self: The self reference.
+        :param polygon: The PolygonStamped message.
 
-            transformed_cloud = self.transform_pointcloud(camera_cloud)
-            # print(transformed_cloud)
+        :publishes self.filtered_cloud: Filtered PointCloud message.
+        """
+        # Initialize a new point cloud message type to store position data.
+        pcl_cloud = PointCloud()
+        pcl_cloud.header = self.pcl2_cloud.header
 
-            # Create the x and y coordinates of the disinfection region verticies
-            region = [[0.65, 0.45], [0.85, 0.45], [0.85, 0.10], [0.65, 0.10]]
+        # For loop to extract pointcloud2 data into a list of x,y,z, and
+        # store it in a pointcloud message (pcl_cloud)
+        for data in pc2.read_points(self.pcl2_cloud, skip_nans=True):
+            pcl_cloud.points.append(Point32(data[0],data[1],data[2]))
 
-            # Set self.filtered_cloud.points as a filter
-            self.filtered_cloud.points=[]
-            # Use for loop to extract x and y points from the transformed cloud
-            for points in transformed_cloud.points: #self.pcl_data:
-                X = points.x
-                Y = points.y
+        # Transform the pointcloud message to reference the base_link
+        transformed_cloud = self.transform_pointcloud(pcl_cloud)
 
-                # Check to see if the x and y points are in the polygon region. If so
-                # then append the x,y, and z points to the filtered cloud.
-                line = geometry.LineString(region)
-                point = geometry.Point(X, Y)
-                polygon = geometry.Polygon(line)
-                if polygon.contains(point) == True:
-                    self.filtered_cloud.points.append(Point32(points.x,points.y,points.z))
-
-            self.check = 1
-            # Publish filtered point_cloud data
-            self.pointcloud_pub.publish(self.filtered_cloud)
+        # Intialize region as a list
+        region = []
+        # Run forloop to store polygon vertices in list named region
+        for vertices in polygon.polygon.points:
+            region.append([vertices.x,vertices.y])
 
 
-    def transform_pointcloud(self,camera_cloud):
+        # Set self.filtered_cloud.points as a list
+        self.filtered_cloud.points=[]
+
+        # Use for loop to extract x and y points from the transformed cloud
+        for points in transformed_cloud.points: #self.pcl_data:
+            X = points.x
+            Y = points.y
+
+            # Check to see if the x and y points are in the polygon region. If so
+            # then append the x,y, and z points to the filtered cloud.
+            line = geometry.LineString(region)
+            point = geometry.Point(X, Y)
+            polygon = geometry.Polygon(line)
+            if polygon.contains(point) == True:
+
+                self.filtered_cloud.points.append(Point32(points.x,points.y,points.z))
+
+        # Publish filtered point_cloud data
+        self.pointcloud_pub.publish(self.filtered_cloud)
+
+
+    def transform_pointcloud(self,pcl_cloud):
+        """
+        Function that stores the pointcloud2 message.
+        :param self: The self reference.
+        :param pcl_cloud: The PointCloud message.
+
+        :returns new_cloud: PointCloud message.
+        """
+        pcl_cloud.header.stamp=rospy.Time.now()
         while not rospy.is_shutdown():
             try:
-                new_cloud = self.listener.transformPointCloud("/base_link" ,camera_cloud)
+                # run the transformPointCloud() function to change the referene frame
+                # to the base_link
+
+                new_cloud = self.listener.transformPointCloud("/base_link" ,pcl_cloud)
                 print("made it here")
+
                 return new_cloud
                 if new_cloud:
                     break
