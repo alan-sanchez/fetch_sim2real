@@ -33,11 +33,13 @@ class Region:
         self.header.frame_id = "/base_link"
         self.header.stamp = rospy.Time.now()
 
-        # Setup PolygonStamped for convex hull of Interactive Markers (IM's)
+        # Setup self.region as a PolygonStamped message type
         self.region = PolygonStamped()
         self.region.header = self.header
 
-        # Setup PolygonStamped for convex hull of Interactive Markers (IM's)
+        # Setup self.offset_region as a PolygonStamped message type. this is to
+        # help visualize how the UV exposure may exceed the limits of the
+        # disinfection region.
         self.offset_region = PolygonStamped()
         self.offset_region.header = self.header
 
@@ -48,22 +50,28 @@ class Region:
 
         :publishes self.region: The PolygonStamped Message
 		"""
+
+        # Create an empty list to stor random points
         coord = []
         for i in range(10):
             x = random.uniform(0.6, 0.9)
             y = random.uniform(0.55, -0.1)
             coord.append([x,y])
 
-        # Run convex hull function on 2D sub-plane coordinates.
+        # Run convex hull function on the random 2D sub-plane coordinates.
         hull = ConvexHull(coord)
+
+        # Reset the polygon.points for both region and offset_region lists.
         self.region.polygon.points = []
         self.offset_region.polygon.points = []
         line = []
 
+        # Store the hull vertices to the polygon.points
         for e in hull.vertices:
             self.region.polygon.points.append(Point32(coord[e][0], coord[e][1], 0.63))
             line.append([coord[e][0], coord[e][1]])
 
+        # Run offset LinearRing for offset polygon.
         poly_line = LinearRing(line)
         poly_offset = poly_line.parallel_offset(0.025,resolution=16,
                                                 join_style=2,
@@ -74,6 +82,7 @@ class Region:
             self.offset_region.polygon.points.append(Point32(offset_x[i],offset_y[i], 0.63))
 
 
+        # Publish polygon regions
         self.region_pub.publish(self.region)
         self.offset_region_pub.publish(self.offset_region)
 

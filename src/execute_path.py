@@ -66,7 +66,7 @@ class ExecutePath(object):
         for pose_goal in msg.poses:
             self.group.set_pose_target(pose_goal)
             self.group.set_planning_time(5)
-            plan = group.plan()
+            # plan = group.plan()
             # self.group.set_max_acceleration_scaling_factor(.5)
             # if not flag:
             #     pass

@@ -125,10 +125,7 @@ class pcl_filter:
             try:
                 # run the transformPointCloud() function to change the referene frame
                 # to the base_link
-
                 new_cloud = self.listener.transformPointCloud("/base_link" ,pcl_cloud)
-                print("made it here")
-
                 return new_cloud
                 if new_cloud:
                     break

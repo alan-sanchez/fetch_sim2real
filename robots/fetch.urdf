@@ -456,7 +456,7 @@
   <limit effort="60" lower="0.0" upper="0.05" velocity="0.05" /><dynamics damping="100.0" /></joint>
   <link name="ee_link" />
   <joint name="ee_joint" type="fixed">
-    <origin rpy="1.57079632679 1.57079632679 0" xyz="0 0 0" />
+    <origin rpy="0 1.57079632679 0" xyz="0 0 0" />
     <parent link="gripper_link" />
     <child link="ee_link" />
     <axis xyz="0 0 0"/>
