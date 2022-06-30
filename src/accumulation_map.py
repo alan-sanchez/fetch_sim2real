@@ -15,13 +15,13 @@ from std_msgs.msg import Header, String
 from geometry_msgs.msg import Point32
 
 
-class CastRays:
+class Accumulator:
     """
-    
+    A clas
     """
     def __init__(self):
         # Initialize Subscribers
-        self.vector_sub      = rospy.Subscriber('/vectors', numpy_msg(Floats), self.irradiance_vectors, queue_size=10)
+        self.vector_sub = rospy.Subscriber('/vectors', numpy_msg(Floats), self.irradiance_vectors, queue_size=10)
 
         self.iter = 0
         self.hit_list = []
@@ -29,7 +29,7 @@ class CastRays:
         self.prev_time = None
 
     def irradiance_vectors(self, vectors):
-
+        #
         origin = np.array([vectors.data[0], vectors.data[1], vectors.data[2]], dtype=np.double)
         v = vectors.data[3:]
         end = np.array([0,0,0], dtype=np.double)
