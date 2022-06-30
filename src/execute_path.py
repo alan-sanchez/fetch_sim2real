@@ -49,8 +49,13 @@ class ExecutePath(object):
         # Initialize waypoints
         self.waypoints = None
 
-        # Getting Basic Information
-        self.planning_frame = self.group.get_planning_frame()
+        # Define table plane
+        # This creates objects in the planning scene that mimic the ground
+        # If these were not in place gripper could hit the ground
+        self.planning_scene = PlanningSceneInterface("base_link")
+        self.planning_scene.removeCollisionObject("Table")
+        self.planning_scene.addBox("Table", size_x=1, size_y=2, size_z=0.5, x=2, y=0, z=0.5 )
+
 
         # Set path_to_goal to the FollowTrajectoryClient Class
         self.path_to_goal=FollowTrajectoryClient()
