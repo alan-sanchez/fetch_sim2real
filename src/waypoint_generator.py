@@ -16,12 +16,6 @@ from sensor_msgs.msg import PointCloud
 from geometry_msgs.msg import Pose,PoseArray,Quaternion,Point, PolygonStamped, PoseStamped, Point32
 from std_msgs.msg import Header
 from grid_based_sweep_coverage_path_planner import planning_animation,planning
-import matplotlib.pyplot as plt
-
-
-
-# We need the MoveBaseAction and MoveBaseGoal from the move_base_msgs package.
-from boustrophedon_msgs.msg import PlanMowingPathAction, PlanMowingPathGoal, PlanMowingPathResult
 
 class Waypoint_generator:
     """
@@ -61,13 +55,11 @@ class Waypoint_generator:
         self.waypoints_marker.color.g = 0
         self.waypoints_marker.color.b = 1.0
 
-
-        # Set the offset
+        # Set the offset from the surface in the z direction
         self.offset = 0.3
 
-        # Set the waypoint resolution (distance between points)
+        # Set the waypoint resolution (distance between each waypoints)
         self.resolution = 0.05
-
 
     def callback_pcl(self, pcl_msg):
         """
