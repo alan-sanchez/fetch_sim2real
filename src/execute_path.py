@@ -54,7 +54,7 @@ class ExecutePath(object):
         # If these were not in place gripper could hit the ground
         self.planning_scene = PlanningSceneInterface("base_link")
         self.planning_scene.removeCollisionObject("Table")
-        self.planning_scene.addBox("Table", size_x=1, size_y=2, size_z=0.5, x=2, y=0, z=0.5 )
+        self.planning_scene.addBox("Table", size_x=1, size_y=1.5, size_z=0.05, x=1, y=0, z=0.625 )
 
 
         # Set path_to_goal to the FollowTrajectoryClient Class
