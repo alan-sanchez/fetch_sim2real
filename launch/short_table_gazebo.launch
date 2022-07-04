@@ -9,8 +9,8 @@
  <!-- Start Gazebo with models for the Fetch in a small office. -->
  <arg name="robot" default="fetch"/>
  <arg name="debug" default="false"/>
- <arg name="gui" default="true"/>
- <arg name="headless" default="false"/>
+ <arg name="gui" default="false"/>
+ <arg name="headless" default="true"/>
 
  <!-- Start Gazebo with a blank world -->
  <include file="$(find gazebo_ros)/launch/empty_world.launch">
