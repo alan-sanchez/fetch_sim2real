@@ -73,10 +73,11 @@ class Accumulator:
 
         # Use for loop to parse directional vector data and check if each hits
         # a location in the disinfection region.
-        for j in range(int(len(dir_vectors)/4)):
-            vector = np.array([v[j*4 + 0],
-                               v[j*4 + 1],
-                               v[j*4 + 2]], dtype=np.double)
+        for j in range(int(len(dir_ir_vectors)/4)):
+
+            vector = np.array([dir_ir_vectors[j*4 + 0],
+                               dir_ir_vectors[j*4 + 1],
+                               dir_ir_vectors[j*4 + 2]], dtype=np.double)
 
             # Use castRay function in octree class to return a hit location
             hit = self.octree.castRay(ee_loc,
@@ -96,7 +97,11 @@ class Accumulator:
 
                 #
                 dist_ratio = (0.3**2)/Ray_length**2
+
+                #
                 time_exposure = abs(rospy.get_time() - self.prev_time)
+
+                #
                 ir =  dir_ir_vectors[j*4 + 3]
                 irradiance.append(dist_ratio * time_exposure * ir)
 
