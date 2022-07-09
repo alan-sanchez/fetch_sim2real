@@ -9,6 +9,7 @@ import random
 import pyvista as pv
 import pickle
 
+# Import message types and other python libraries.
 from scipy import spatial, stats
 from scipy.spatial.transform import Rotation as R
 from visualization_msgs.msg import Marker
@@ -28,7 +29,7 @@ class Waypoint_generator:
         """
         # Initialize Subscribers
         self.pointcloud_sub  = rospy.Subscriber("filtered_cloud", PointCloud,     self.callback_pcl,    queue_size=1)
-        self.region_sub      = rospy.Subscriber("offset_region",         PolygonStamped, self.callback_region, queue_size=1)
+        self.region_sub      = rospy.Subscriber("offset_region",  PolygonStamped, self.callback_region, queue_size=1)
 
         # Initialize Publishers
         self.waypoints_pub        = rospy.Publisher('waypoints'       , PoseArray , queue_size=1)
@@ -84,6 +85,12 @@ class Waypoint_generator:
 
 
     def callback_region(self, msg):
+        """
+        Callback function that parses the PolygonStamped message type to two
+        separate lists of x and y positions.
+        :param self: The self reference.
+        :param msg: The PolygonStamped message type.
+        """
         # Store the x and y positions of polygon message in separate lists
         self.Polygon_X = []
         self.Polygon_Y = []
@@ -99,6 +106,12 @@ class Waypoint_generator:
 
 
     def waypoint_planner(self):
+        """
+        A function that generates a lawn mower waypoint path from the polygon's
+        x and y coordinates. This function also publishes the waypoints as a
+        PoseArray message type.
+        :param self: The self reference.
+        """
         # Acquire the planned x an y values from the planning function in the
         # grid_based_sweep_coverage_path_planner python script.
         px,py = planning(self.Polygon_X, self.Polygon_Y, self.resolution)

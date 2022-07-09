@@ -6,7 +6,7 @@ import random
 import rospy
 import sys
 
-# Import message types and other pytho libraries.
+# Import message types and other python libraries.
 from scipy.spatial import ConvexHull
 from std_msgs.msg import Header
 from geometry_msgs.msg import PolygonStamped, Point32
@@ -76,8 +76,11 @@ class Region:
         poly_offset = poly_line.parallel_offset(0.025,resolution=16,
                                                 join_style=2,
                                                 mitre_limit=1)
+
+        # Create offset for visualization in RViz
         offset_x,offset_y = poly_offset.xy
 
+        # Append the offset's x and y coordinates using a forloop
         for i in range(len(offset_x)):
             self.offset_region.polygon.points.append(Point32(offset_x[i],offset_y[i], 0.63))
 
