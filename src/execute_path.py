@@ -53,8 +53,8 @@ class ExecutePath(object):
         # This creates objects in the planning scene that mimic the ground
         # If these were not in place gripper could hit the ground
         self.planning_scene = PlanningSceneInterface("base_link")
-        self.planning_scene.removeCollisionObject("Table")
-        self.planning_scene.addBox("Table", size_x=1, size_y=1.5, size_z=0.05, x=1, y=0, z=0.625 )
+        # self.planning_scene.removeCollisionObject("Table")
+        # self.planning_scene.addBox("Table", size_x=1, size_y=1.5, size_z=0.05, x=1, y=0, z=0.625 )
 
 
         # Set path_to_goal to the FollowTrajectoryClient Class
@@ -93,6 +93,7 @@ class ExecutePath(object):
 
         self.path_to_goal.init_pose()
         rospy.sleep(2)
+        print("")
         print("====== Press 'Enter' to generate random region =======")
 
 
