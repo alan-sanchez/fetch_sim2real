@@ -5,9 +5,7 @@ import rospy
 import math
 import actionlib
 import numpy as np
-import random
 import pyvista as pv
-import pickle
 
 # Import message types and other python libraries.
 from scipy import spatial, stats
@@ -18,7 +16,7 @@ from geometry_msgs.msg import Pose,PoseArray,Quaternion,Point, PolygonStamped, P
 from std_msgs.msg import Header
 from grid_based_sweep_coverage_path_planner import planning_animation,planning
 
-class Waypoint_generator:
+class WaypointGenerator:
     """
     A class that generates waypoints within the disinfection region.
     """
@@ -81,7 +79,7 @@ class Waypoint_generator:
             self.cloud_z.append(pcl_msg.points[i].z)
 
         # Run waypoint planner for non-planar surfaces.
-        self.waypoint_planner()
+        self.waypoint_generator()
 
 
     def callback_region(self, msg):
@@ -105,7 +103,7 @@ class Waypoint_generator:
         self.Polygon_Y.append(self.Polygon_Y[0])
 
 
-    def waypoint_planner(self):
+    def waypoint_generator(self):
         """
         A function that generates a lawn mower waypoint path from the polygon's
         x and y coordinates. This function also publishes the waypoints as a
@@ -138,7 +136,7 @@ class Waypoint_generator:
             p = Pose()
             p.position.x = px[i]#self.cloud_x[index]
             p.position.y = py[i]#self.cloud_y[index]
-            p.position.z = self.cloud_z[i] + self.offset#self.cloud_z[index] + self.offset
+            p.position.z = max(self.cloud_z) + self.offset#self.cloud_z[index] + self.offset
             p.orientation.x = 0
             p.orientation.y = .7070
             p.orientation.z = 0
@@ -241,5 +239,7 @@ class Waypoint_generator:
 if __name__=="__main__":
     # Initialize the node
     rospy.init_node('waypoint_generator')
-    Waypoint_generator()
+
+    # Instantiate the WaypointGenerator class
+    WaypointGenerator()
     rospy.spin()
