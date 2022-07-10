@@ -16,6 +16,8 @@ from moveit_msgs.msg import MoveItErrorCodes, PlanningScene, RobotTrajectory
 from moveit_python import MoveGroupInterface, PlanningSceneInterface
 from std_msgs.msg import String, Int32, Float32
 from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion, PoseArray
+from rospy.numpy_msg import numpy_msg
+from rospy_tutorials.msg import Floats
 
 
 class ExecutePath(object):
@@ -23,7 +25,6 @@ class ExecutePath(object):
     Class that commands the Fetch robot to execute a joint trajectory based on
     subscribes pose goals.
     """
-
     def __init__(self):
         """
         A function that initializes subscriber, publisher, moveit_commander,and
@@ -32,9 +33,10 @@ class ExecutePath(object):
         """
         super(ExecutePath, self).__init__()
         # Initialize subscribers
-        self.waypoints_sub = rospy.Subscriber('waypoints', PoseArray, self.go_to_pose)
+        self.waypoints_sub  = rospy.Subscriber('waypoints', PoseArray, self.callback_waypoints)
+        self.velocities_sub = rospy.Subscriber('velocities', numpy_msg(Floats), self.go_to_pose)
 
-        # Publisher
+        # Initialize Publisher
         self.command_pub  = rospy.Publisher('command', String, queue_size=10)
 
         # First initialize `moveit_commander`
@@ -64,11 +66,21 @@ class ExecutePath(object):
         # self.planning_scene.removeCollisionObject("Table")
         # self.planning_scene.addBox("Table", size_x=1, size_y=1.5, size_z=0.05, x=1, y=0, z=0.625 )
 
+        # Delcare object from FollowTrajcecotyClient class
+        self.joint_goal=FollowTrajectoryClient()
+        self.joint_goal.init_pose()
 
         # Print out instructions for user input to get things started
         print("")
         print("====== Press 'Enter' to generate random region =======")
 
+    def callback_waypoints(self,msg):
+        """
+        Function that stores the PoseArray messages.
+        :param self: The self reference.
+        :param msg: The PoseArray message type.
+        """
+        self.waypoints = msg
 
     def go_to_pose(self,msg):
         """
@@ -82,16 +94,21 @@ class ExecutePath(object):
         self.command_pub.publish("start")
 
         # Go to each pose goal, using a forloop
-        for pose_goal in msg.poses:
+        for pose_goal, vel in zip(self.waypoints.poses, msg.data):
             self.group.set_pose_target(pose_goal)
             self.group.set_planning_time(5)
+
+            # Set the velocity for Joint trajectory goal
+            self.group.set_max_velocity_scaling_factor(vel.item())
+
+            # Execute the pose goal
             plan = self.group.go(wait=True)
 
         # Publish string command to stop UV accumulation mapping from other nodes
         self.command_pub.publish("stop")
 
         # Go back to initail position
-        self.init_pose()
+        self.joint_goal.init_pose()
 
         # Pause the simulation for a couple of seconds
         rospy.sleep(2.5)
@@ -99,6 +116,22 @@ class ExecutePath(object):
         # Print out instructions for user input for next disinfection simulation
         print("")
         print("====== Press 'Enter' to generate random region =======")
+
+
+class FollowTrajectoryClient(object):
+    """
+    Class that commands the Fetch robot to execute a joint trajectory from a joint
+    goal and return its body configuration to the inital pose.
+    """
+    def __init__(self):
+        """
+        Function that intiailze the MoveGroupInterface and PlanningSceneInterface clients
+        """
+        rospy.loginfo("Waiting for MoveIt...")
+        self.client = MoveGroupInterface("arm_with_torso", "base_link")
+        rospy.loginfo("...connected")
+        self.scene = PlanningSceneInterface("base_link")
+        self.scene.addBox("keepout", 0.2, 0.5, 0.05, 0.15, 0.0, 0.375)
 
     def init_pose(self, vel = .4):
         """
@@ -131,8 +164,11 @@ class ExecutePath(object):
                 return
 
 
+
 if __name__ == '__main__':
     ## First initialize `moveit_commander`_ and a `rospy`_ node:
     rospy.init_node('execute_path', anonymous=True)
+
+    # Instantiate the ExecutePath class
     ExecutePath()
     rospy.spin()
