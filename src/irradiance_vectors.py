@@ -78,8 +78,8 @@ class IrradianceVectors(object):
     def distance_calculator(self):
         # Generate 3 layers of points that will serve as the leading points of
         # the UV castRays. there will be 1 point in the center, 6 in the middle layer
-        # and 12 in the outer layer. These values are in a list (n).
-        # r reresents the layer distance from the center point.
+        # and 12 in the outer layer. These values are in a list named "n".
+        # "r" reresents the layer distance from the center point.
         n = [1, 6, 12]
         r = [0.0, 0.025, 0.05]
 

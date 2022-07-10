@@ -6,13 +6,12 @@ import random
 import rospy
 import sys
 
-# Import message types and other python libraries.
+# Import message types and other python libraries
 from scipy.spatial import ConvexHull
 from std_msgs.msg import Header
 from geometry_msgs.msg import PolygonStamped, Point32
 from visualization_msgs.msg import Marker
 from shapely.geometry.polygon import LinearRing
-
 
 class Region:
     """
@@ -39,7 +38,7 @@ class Region:
 
         # Setup self.offset_region as a PolygonStamped message type. this is to
         # help visualize how the UV exposure may exceed the limits of the
-        # disinfection region.
+        # disinfection region
         self.offset_region = PolygonStamped()
         self.offset_region.header = self.header
 
@@ -58,10 +57,10 @@ class Region:
             y = random.uniform(0.55, -0.1)
             coord.append([x,y])
 
-        # Run convex hull function on the random 2D sub-plane coordinates.
+        # Run convex hull function on the random 2D sub-plane coordinates
         hull = ConvexHull(coord)
 
-        # Reset the polygon.points for both region and offset_region lists.
+        # Reset the polygon.points for both region and offset_region lists
         self.region.polygon.points = []
         self.offset_region.polygon.points = []
         line = []
@@ -71,7 +70,7 @@ class Region:
             self.region.polygon.points.append(Point32(coord[e][0], coord[e][1], 0.63))
             line.append([coord[e][0], coord[e][1]])
 
-        # Run offset LinearRing for offset polygon.
+        # Run offset LinearRing for offset polygon
         poly_line = LinearRing(line)
         poly_offset = poly_line.parallel_offset(0.025,resolution=16,
                                                 join_style=2,
@@ -90,14 +89,19 @@ class Region:
         self.offset_region_pub.publish(self.offset_region)
 
 
-
-
 if __name__ == '__main__':
     # Initialize the node
     rospy.init_node('region')
+
+    # Declare object from Region class
     region = Region()
+
+    # Set rospy rate
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
+        # Wait for user input before generating new disinfection region
         raw_input()
+
+        # Run the convex hull function
         region.convex_hull()
         rate.sleep()

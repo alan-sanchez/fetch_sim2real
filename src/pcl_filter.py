@@ -16,7 +16,7 @@ from shapely import geometry
 
 class pcl_filter:
     """
-    A class that takes in a pointcloud 2 message and transfers the data into a
+    A class that takes in a PointCloud2 message and transfers it into a
     pointcloud message. Then the pointcloud message is filtered where only the
     points inside the disinfectin region are considered.
     """
@@ -25,7 +25,7 @@ class pcl_filter:
         Function that initializes the subsribers, publishers, and other variables.
         :param self: The self reference.
         """
-        # Flag
+        # Flag for storiing the octree map
         self.flag = 0
 
         # Initialize Subscribers
@@ -47,8 +47,6 @@ class pcl_filter:
 
         # Intialize tf.Transformlister
         self.listener = tf.TransformListener()
-
-
 
     def callback_pcl2(self,msg):
         """
@@ -111,7 +109,6 @@ class pcl_filter:
         # Publish filtered point_cloud data
         self.pointcloud_pub.publish(self.filtered_cloud)
 
-
     def transform_pointcloud(self,pcl_cloud):
         """
         Function that stores the pointcloud2 message.
@@ -133,6 +130,9 @@ class pcl_filter:
                 pass
 
 if __name__=="__main__":
+    # Intiailze the pcl filter node
     rospy.init_node('pcl_filter',anonymous=True)
+
+    # Instantiate the PCL filter class
     pcl_filter()
     rospy.spin()
