@@ -72,7 +72,7 @@ class Region:
 
         # Run offset LinearRing for offset polygon
         poly_line = LinearRing(line)
-        poly_offset = poly_line.parallel_offset(0.025,resolution=16,
+        poly_offset = poly_line.parallel_offset(0.05,resolution=16,
                                                 join_style=2,
                                                 mitre_limit=1)
 
