@@ -30,7 +30,7 @@ class pcl_filter:
 
         # Initialize Subscribers
         self.pointcloud2_sub = rospy.Subscriber("/octomap_point_cloud_centers", PointCloud2,    self.callback_pcl2, queue_size=1)
-        self.region_sub      = rospy.Subscriber("region",                       PolygonStamped, self.pcl_filter, queue_size=1)
+        self.region_sub      = rospy.Subscriber("/region",                       PolygonStamped, self.pcl_filter, queue_size=1)
 
 
         # Initialize PointCloud Publisher
@@ -54,12 +54,11 @@ class pcl_filter:
         :param self: The self reference.
         :param msg: The Pointcloud2 message type.
         """
-        # Store pointcloud2 data
-        self.pcl2_cloud = msg
-
-        # Use flag condition so we don't continuously store the same octree map
+        # Use flag condition so we don't continuously store the same pointcloud data
         if self.flag == 0:
             rospy.loginfo("received pointcloud")
+            # Store pointcloud2 data
+            self.pcl2_cloud = msg
             self.flag = 1
 
     def pcl_filter(self, polygon):
