@@ -23,7 +23,7 @@ class Region:
 		:param self: The self reference.
 		"""
         # Initialize Publishers
-        self.region_pub = rospy.Publisher('region', PolygonStamped, queue_size=1)
+        self.region_pub        = rospy.Publisher('region',        PolygonStamped, queue_size=1)
         self.offset_region_pub = rospy.Publisher('offset_region', PolygonStamped, queue_size=1)
 
 
@@ -91,7 +91,7 @@ class Region:
 
 if __name__ == '__main__':
     # Initialize the node
-    rospy.init_node('region')
+    rospy.init_node('region_generator')
 
     # Declare object from Region class
     region = Region()
