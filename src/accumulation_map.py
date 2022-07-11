@@ -14,8 +14,7 @@ from sensor_msgs.msg import PointCloud2, PointCloud
 from std_msgs.msg import Header, String
 from geometry_msgs.msg import Point32
 
-
-class Accumulator:
+class AccumulationMap:
     """
     A class that subscribes to the UV direction vectors and publishes a matrix
     that represents a UV accumulation depth map.
@@ -26,18 +25,63 @@ class Accumulator:
         :param self: The self reference.
         """
         # Initialize Subscriber
-        self.vector_sub = rospy.Subscriber('/vectors', numpy_msg(Floats), self.irradiance_vectors, queue_size=10)
+        self.vector_sub      = rospy.Subscriber('/vectors',        numpy_msg(Floats), self.irradiance_vectors)
+        self.pointcloud_sub  = rospy.Subscriber('/filtered_cloud', PointCloud,        self.pointcloud_data)
+        self.stop_sub        = rospy.Subscriber('/stop',           String,            self.callback_stop_command)
 
         # Initialize Publisher
+        self.acc_map_pub = rospy.Publisher('/accumulation_map', numpy_msg(Floats), queue_size=10)
 
-        # Create an empty list for future storage of the rays that hit.
+        # Create an empty list for future storage of the rays that hit
         self.hit_list = []
 
-        # Create and epty list for the irradiance values for the rays that hit.
-        self.ir_list = []
+        # Create a list of the accumulation map
+        self.accumulation_map = []
+
+        self.required_dose = 0
 
         # Set a previous time as none. This will be used for [ADD HERE]
-        self.prev_time = None
+        self.prev_time = rospy.get_time()
+
+        # Initialize OcTree function with a resolution of 0.05 meters
+        self.resolution = 0.05
+        self.octree = octomap.OcTree(self.resolution)
+
+        # Initialize filtered_cloud variable
+        self.filtered_cloud = None
+
+        # Initialize command
+        self.command = None
+
+    def pointcloud_data(self, msg):
+        """
+        Function that stores the filtered point cloud and create new octree for
+        castRay calculations.
+        :param self: The self reference.
+        :param msg: The PointCloud message type.
+        """
+        # Store the filtered point cloud
+        self.filtered_cloud = msg
+
+        # Parse the filtered cloud's points as a np.array. This action is required
+        # to pass as an agrument in the insertPointCloud() function.
+        points = np.empty(shape=[len(self.filtered_cloud.points),3])
+        for i in range(len(self.filtered_cloud.points)):
+            points[i] = [self.filtered_cloud.points[i].x,
+                         self.filtered_cloud.points[i].y,
+                         self.filtered_cloud.points[i].z]
+
+        self.octree.insertPointCloud(pointcloud = points, origin = np.array([0, 0, 0], dtype=float))
+
+    def callback_stop_command(self, msg):
+        """
+        A callback function that stores a String message that stops the node from
+        publishing irridance vectors.
+        :param self: The self reference.
+        :param msg: The String message type.
+        """
+        # self.command = msg
+        del self.hit_list[:], self.accumulation_map[:]
 
     def irradiance_vectors(self, msg):
         """
@@ -49,12 +93,14 @@ class Accumulator:
         # This resets the prev_time variable to None after a trajectory execution
         # is complete. This is because there is a 2 second wait time before the user
         # can generate another random region to disinfect.
-        if (rospy.get_time() - self.prev_time) > 2:
+        if (rospy.get_time() - self.prev_time) > 2.0:
             self.prev_time = None
 
         # For the first  or reset of the prev_time variable.
         if self.prev_time == None:
             self.prev_time = rospy.get_time()
+            del self.hit_list[:], self.accumulation_map[:]
+
 
         # The end effector location and its referencing the base link.
         ee_loc = np.array([msg.data[0], msg.data[1], msg.data[2]], dtype=np.double)
@@ -65,11 +111,8 @@ class Accumulator:
         # end is a zero array where the location of the hit will be stored.
         end = np.array([0,0,0], dtype=np.double)
 
-        # # Begin Timer for computed the UV dose (UV irradiance x time exposure)
-        # start = rospy.get_time()
-
-        hits = []
-        irradiance = []
+        # Compute the time exposure
+        time_exposure = abs(rospy.get_time() - self.prev_time)
 
         # Use for loop to parse directional vector data and check if each hits
         # a location in the disinfection region.
@@ -88,55 +131,38 @@ class Accumulator:
 
             # If there is a hit, then continue next set of computations
             if hit:
-
-                # Append hit location, end, to a hit_list
-                hits.append(end.tolist())
-
-                # Get euclidean distance from end and end_effector tf.
+                # Get euclidean distance from hit location and ee_link position.
                 Ray_length = np.sqrt(np.sum((end-ee_loc)**2, axis=0))
 
-                #
-                dist_ratio = (0.3**2)/Ray_length**2
+                # The the distance ratio between the castRay and our measurements
+                # from our model (0.3m)
+                dist_ratio = (0.3**2)/(Ray_length**2)
 
-                #
-                time_exposure = abs(rospy.get_time() - self.prev_time)
-
-                #
+                # Extract the irradiance value for the given directional vector
                 ir =  dir_ir_vectors[j*4 + 3]
-                irradiance.append(dist_ratio * time_exposure * ir)
 
+                # Compute the UV dose for each vector
+                dose = dist_ratio * time_exposure * ir
 
-        for k in range(len(irradiance)):
-            if hits[k] in self.hit_list:
-                index = self.hit_list.index(hit_list[k])
-                self.ir_list[index] = irradiance[k] + self.ir_list[index]
+                # Use for loop to update self.hit_list, self.dose_list, and self.accumulation_map
+                if end.tolist() in self.hit_list:
+                    index = self.hit_list.index(end.tolist())
+                    self.accumulation_map[index][3] = dose + self.accumulation_map[index][3]
 
-            else:
-                self.hit_list.append(hit_list[k])
-                self.ir_list.append(irradiance[k])
+                else:
+                    self.hit_list.append(end.tolist())
+                    self.accumulation_map.append([end.tolist()[0], end.tolist()[1], end.tolist()[2], dose - self.required_dose])
 
+        arr = np.array(self.accumulation_map)
+        self.acc_map_pub.publish(np.array(arr.ravel(), dtype=np.float32))
 
         self.prev_time = rospy.get_time()
 
 
-
-
-
-
 if __name__=="__main__":
-    rospy.init_node('castRays',anonymous=True)
-    CastRays()
-    rospy.spin()
+    # Initialize accumulation_map node
+    rospy.init_node('accumulation_map',anonymous=True)
 
-    #
-    #
-    # if end.tolist() in hit_list:
-    #     pass
-    # else:
-    #     hit_list.append(end.tolist())
-    #
-    #     Ray_length = np.sqrt(np.sum((end-ee_loc)**2, axis=0))
-    #     dist_ratio = (0.3**2)/Ray_length**2
-    #     time_exposure = abs(rospy.get_time() - self.prev_time)
-    #     ir =  v[j*4 + 3]
-    #     irradiance.append(dist_ratio * time_exposure * ir)
+    # Instantiate the AccumulationMap class
+    AccumulationMap()
+    rospy.spin()
