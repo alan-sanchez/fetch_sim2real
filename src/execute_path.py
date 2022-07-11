@@ -8,14 +8,13 @@ import rospy
 import moveit_commander
 import moveit_msgs.msg
 import numpy as np
-import time
 
 # Import message types and other python libraries.
 from threading import Thread
 from moveit_msgs.msg import MoveItErrorCodes, PlanningScene, RobotTrajectory
 from moveit_python import MoveGroupInterface, PlanningSceneInterface
-from std_msgs.msg import String, Int32, Float32
-from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion, PoseArray
+from std_msgs.msg import String, Float32
+from geometry_msgs.msg import PoseArray
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 
@@ -37,7 +36,9 @@ class ExecutePath(object):
         self.velocities_sub = rospy.Subscriber('velocities', numpy_msg(Floats), self.go_to_pose)
 
         # Initialize Publisher
-        self.command_pub  = rospy.Publisher('command', String, queue_size=10)
+        self.start_pub = rospy.Publisher('start', String, queue_size=10)
+        self.stop_pub  = rospy.Publisher('stop',  String, queue_size=10)
+
 
         # First initialize `moveit_commander`
         moveit_commander.roscpp_initialize(sys.argv)
@@ -56,7 +57,7 @@ class ExecutePath(object):
         self.display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
                                                        moveit_msgs.msg.DisplayTrajectory,
                                                        queue_size=20)
-        # Initialize waypoints
+        # Initialize waypoints variable
         self.waypoints = None
 
         # Define table plane
@@ -91,7 +92,7 @@ class ExecutePath(object):
         :param msg: The PoseArray message type.
         """
         # Publish string command to initiate functions in other nodes
-        self.command_pub.publish("start")
+        self.start_pub.publish("start")
 
         # Go to each pose goal, using a forloop
         for pose_goal, vel in zip(self.waypoints.poses, msg.data):
@@ -105,7 +106,7 @@ class ExecutePath(object):
             plan = self.group.go(wait=True)
 
         # Publish string command to stop UV accumulation mapping from other nodes
-        self.command_pub.publish("stop")
+        self.stop_pub.publish("stop")
 
         # Go back to initail position
         self.joint_goal.init_pose()
