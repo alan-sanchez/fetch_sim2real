@@ -8,11 +8,11 @@ import numpy as np
 import pyvista as pv
 
 # Import message types and other python libraries.
-from scipy import spatial, stats
+from scipy import spatial
 from scipy.spatial.transform import Rotation as R
 from visualization_msgs.msg import Marker
 from sensor_msgs.msg import PointCloud
-from geometry_msgs.msg import Pose,PoseArray,Quaternion,Point, PolygonStamped, PoseStamped, Point32
+from geometry_msgs.msg import Pose,PoseArray, Point, PolygonStamped, PoseStamped, Point32
 from std_msgs.msg import Header
 from grid_based_sweep_coverage_path_planner import planning_animation,planning
 
@@ -147,7 +147,7 @@ class WaypointGenerator:
             self.waypoints_marker.id = i
             self.waypoints_marker.pose = p
             self.waypoints_marker_pub.publish(self.waypoints_marker)
-            rospy.sleep(0.005)
+            rospy.sleep(0.01)
 
 ################ Test Case 3: Offset distance from point normal ################
 
@@ -172,8 +172,6 @@ class WaypointGenerator:
     #         for j in closest_points_ii:
     #             self.z_val.append(self.cloud_z[j])
     #
-    #         # Remove any z outliers of the stored data.
-    #         # self.remove_outliers()
     #
     #         # Find the index of the max z value from the closest neighbors
     #         index = closest_points_ii[self.z_val.index(max(self.z_val))]

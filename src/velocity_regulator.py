@@ -33,7 +33,6 @@ class VelocityRegulator:
         :param self: The self reference.
         :param msg: The PoseArray message type.
         """
-
         # Create an array of ones. The size is the same as the number of waypoints.
         velocities = np.ones(len(msg.poses), dtype=np.float32)
 
