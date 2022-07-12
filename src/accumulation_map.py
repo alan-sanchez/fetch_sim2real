@@ -13,6 +13,7 @@ from rospy_tutorials.msg import Floats
 from sensor_msgs.msg import PointCloud2, PointCloud
 from std_msgs.msg import Header, String
 from geometry_msgs.msg import Point32
+from fetch_sim2real.msg import HeaderArray
 
 class AccumulationMap:
     """
@@ -31,6 +32,7 @@ class AccumulationMap:
 
         # Initialize Publisher
         self.acc_map_pub = rospy.Publisher('/accumulation_map', numpy_msg(Floats), queue_size=10)
+        self.UV_map_pub  = rospy.Publisher('/accum_map', HeaderArray, queue_size=10)
 
         # Create an empty list for future storage of the rays that hit
         self.hit_list = []

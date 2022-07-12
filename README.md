@@ -23,6 +23,7 @@ You also need to pip and pip3 install:
 * planar
 * pyvista
 * shapely
+* octomap (pip install octomap-python --no-binary octomap-python & sudo apt-get install libdynamicedt3d*)
 
 ### Build
 Once your system is set up, clone the [fetch_sim2real](https://github.com/alan-sanchez/fetch_sim2real.git) to your workspace and build the package in your workspace. Then source the workspace in your bash file. This can be done by copying the commands below and pasting them into your terminal.
