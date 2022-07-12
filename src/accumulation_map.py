@@ -31,14 +31,17 @@ class AccumulationMap:
         self.stop_sub        = rospy.Subscriber('/stop',           String,            self.callback_stop_command)
 
         # Initialize Publisher
-        self.acc_map_pub = rospy.Publisher('/accumulation_map', numpy_msg(Floats), queue_size=10)
-        self.UV_map_pub  = rospy.Publisher('/accum_map', HeaderArray, queue_size=10)
+        self.acc_map_pub  = rospy.Publisher('/accumulation_map', HeaderArray, queue_size=10)
 
         # Create an empty list for future storage of the rays that hit
         self.hit_list = []
 
         # Create a list of the accumulation map
-        self.accumulation_map = []
+        self.accumulation_map = HeaderArray()
+        self.accumulation_map.header = Header()
+        self.accumulation_map.header.frame_id = "/base_link"
+
+        self.acc_map_list = []
 
         self.required_dose = 0
 
@@ -83,7 +86,7 @@ class AccumulationMap:
         :param msg: The String message type.
         """
         # self.command = msg
-        del self.hit_list[:], self.accumulation_map[:]
+        del self.hit_list[:], self.acc_map_list[:]
 
     def irradiance_vectors(self, msg):
         """
@@ -101,7 +104,7 @@ class AccumulationMap:
         # For the first  or reset of the prev_time variable.
         if self.prev_time == None:
             self.prev_time = rospy.get_time()
-            del self.hit_list[:], self.accumulation_map[:]
+            del self.hit_list[:], self.acc_map_list[:]
 
 
         # The end effector location and its referencing the base link.
@@ -149,14 +152,16 @@ class AccumulationMap:
                 # Use for loop to update self.hit_list, self.dose_list, and self.accumulation_map
                 if end.tolist() in self.hit_list:
                     index = self.hit_list.index(end.tolist())
-                    self.accumulation_map[index][3] = dose + self.accumulation_map[index][3]
+                    self.acc_map_list[index][3] = dose + self.acc_map_list[index][3]
 
                 else:
                     self.hit_list.append(end.tolist())
-                    self.accumulation_map.append([end.tolist()[0], end.tolist()[1], end.tolist()[2], dose - self.required_dose])
+                    self.acc_map_list.append([end.tolist()[0], end.tolist()[1], end.tolist()[2], dose - self.required_dose])
 
-        arr = np.array(self.accumulation_map)
-        self.acc_map_pub.publish(np.array(arr.ravel(), dtype=np.float32))
+        arr = np.array(self.acc_map_list)
+        self.accumulation_map.data = (np.array(arr.ravel(), dtype=np.float32))
+        self.accumulation_map.header.stamp = rospy.Time.now()
+        self.acc_map_pub.publish(self.accumulation_map)
 
         self.prev_time = rospy.get_time()
 
