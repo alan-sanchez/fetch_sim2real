@@ -3,6 +3,8 @@
 import rospy
 import sys
 import message_filters
+import pandas as pd
+# import csv
 
 from geometry_msgs.msg import PoseStamped, PoseArray
 from sensor_msgs.msg import JointState
@@ -11,7 +13,8 @@ from sensor_msgs.msg import PointCloud
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 from fetch_sim2real.msg import HeaderArray
-from csv import writer
+from csv import writer, DictWriter
+
 
 
 class SyncData:
@@ -86,9 +89,21 @@ class SyncData:
         :param msg: The String message.
         """
         self.command = msg
+        ee_loc_header = ['Position_x', 'Position_y','Position_z', 'Quaternion_x', 'Quaternion_y', 'Quaternion_z', 'Quaternion_w']
+        # with open("CSVFILE.csv", 'w') as file:
+        #     dw = DictWriter(file, delimiter=',',
+        #                     fieldnames=ee_loc_header)
+        #     dw.writeheader()
+
+
+
 
     def callback_sync(self, msg1, msg2, msg3):
-        ee_loc = [msg3.pose.position.x, msg3.pose.position.x, msg3.pose.position.x]
+        ee_loc = [msg3.pose.position.x, msg3.pose.position.x, msg3.pose.position.x, msg3.pose.orientation.x, msg3.pose.orientation.y, msg3.pose.orientation.z, msg3.pose.orientation.w]
+        #
+        # df = pd.DataFrame(ee_loc, index=['ee_pose'],columns = ee_loc_header)
+        #
+        # df.to_csv('Test.csv', mode='a', index=False, header=False)
 
         with open ('CSVFILE.csv', 'a+') as f_object:
             writer_object = writer(f_object)
