@@ -30,7 +30,7 @@ class pcl_filter:
 
         # Initialize Subscribers
         self.pointcloud2_sub = rospy.Subscriber("/octomap_point_cloud_centers", PointCloud2,    self.callback_pcl2, queue_size=1)
-        self.region_sub      = rospy.Subscriber("/region",                       PolygonStamped, self.pcl_filter, queue_size=1)
+        self.region_sub      = rospy.Subscriber("/region",                      PolygonStamped, self.pcl_filter,    queue_size=1)
 
 
         # Initialize PointCloud Publisher

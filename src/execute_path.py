@@ -32,7 +32,7 @@ class ExecutePath(object):
         """
         super(ExecutePath, self).__init__()
         # Initialize subscribers
-        self.waypoints_sub  = rospy.Subscriber('waypoints', PoseArray, self.callback_waypoints)
+        self.waypoints_sub  = rospy.Subscriber('waypoints',  PoseArray,         self.callback_waypoints)
         self.velocities_sub = rospy.Subscriber('velocities', numpy_msg(Floats), self.go_to_pose)
 
         # Initialize Publisher

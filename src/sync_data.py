@@ -11,6 +11,7 @@ from sensor_msgs.msg import PointCloud
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 from fetch_sim2real.msg import HeaderArray
+from csv import writer
 
 
 class SyncData:
@@ -24,7 +25,7 @@ class SyncData:
         # Initialize subscribers
         self.waypoints_sub  = rospy.Subscriber('/waypoints',      PoseArray,         self.callback_waypoints)
         self.pointcloud_sub = rospy.Subscriber('/filtered_cloud', PointCloud,        self.callback_pointcloud)
-        self.velocities_sub = rospy.Subscriber('velocities',      numpy_msg(Floats), self.callback_velocities)
+        self.velocities_sub = rospy.Subscriber('/velocities',     numpy_msg(Floats), self.callback_velocities)
         self.stop_sub       = rospy.Subscriber('/stop',           String,            self.callback_stop_command)
 
 
@@ -50,6 +51,7 @@ class SyncData:
 
         # Initiailze command String
         self.command = "start"
+
 
     def callback_pointcloud(self, msg):
         """
@@ -86,6 +88,12 @@ class SyncData:
         self.command = msg
 
     def callback_sync(self, msg1, msg2, msg3):
+        ee_loc = [msg3.pose.position.x, msg3.pose.position.x, msg3.pose.position.x]
+
+        with open ('CSVFILE.csv', 'a+') as f_object:
+            writer_object = writer(f_object)
+            writer_object.writerow(ee_loc)
+
         rospy.loginfo('Got three messages')
 
 
