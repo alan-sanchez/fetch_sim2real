@@ -27,7 +27,7 @@ class AccumulationMap:
         """
         # Initialize Subscriber
         self.vector_sub      = rospy.Subscriber('/vectors',        numpy_msg(Floats), self.irradiance_vectors)
-        self.pointcloud_sub  = rospy.Subscriber('/filtered_cloud', PointCloud,        self.pointcloud_data)
+        self.pointcloud_sub  = rospy.Subscriber('/filtered_cloud', PointCloud,        self.callback_pointcloud)
         self.stop_sub        = rospy.Subscriber('/stop',           String,            self.callback_stop_command)
 
         # Initialize Publisher
@@ -58,7 +58,7 @@ class AccumulationMap:
         # Initialize command
         self.command = None
 
-    def pointcloud_data(self, msg):
+    def callback_pointcloud(self, msg):
         """
         Function that stores the filtered point cloud and create new octree for
         castRay calculations.
