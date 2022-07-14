@@ -9,7 +9,7 @@ import tf
 
 # Import message types and other python libraries
 from best_fit import fit
-from geometry_msgs.msg import Vector3Stamped, PointStamped
+from geometry_msgs.msg import Vector3Stamped, PointStamped, PoseStamped
 from std_msgs.msg import Header, String, Float32
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
@@ -26,11 +26,12 @@ class IrradianceVectors(object):
         :param self: The self reference.
         """
         # Initialize Subscribers
-        self.start_sub = rospy.Subscriber('start' , String , self.ir_vec_calculaor)
-        self.stop_sub  = rospy.Subscriber('stop', String, self.callback_stop_command)
+        self.start_sub = rospy.Subscriber('start', String, self.ir_vec_calculaor)
+        self.stop_sub  = rospy.Subscriber('stop',  String, self.callback_stop_command)
 
         # Initialize Publishers
         self.vector_array_pub = rospy.Publisher('vectors', numpy_msg(Floats), queue_size=10)
+        self.ee_pose_pub      = rospy.Publisher('ee_pose', PoseStamped,       queue_size=10)
 
         # Initialize transform listener
         self.listener = tf.TransformListener()
@@ -40,17 +41,18 @@ class IrradianceVectors(object):
         self.header.frame_id = "/base_link"
         self.header.stamp = rospy.Time.now()
 
-        # Initialize the end effectors point stamp data
+        # Initialize the end effector PointStamped message type. Used for Transformation Matrix
         self.ee_point_stamp = PointStamped()
         self.ee_point_stamp.header = Header()
         self.ee_point_stamp.header.frame_id = "/ee_link"
         self.ee_point_stamp.header.stamp = rospy.Time.now()
 
-        # Bring in the UV light source model
-        self.eqn_model = fit(16, plotter = False)
+        # Initialize the end effector PoseStamped message type. Used for data storage
+        self.ee_pose_stamped = PoseStamped()
+        self.ee_pose_stamped.header = self.header
 
-        # Time duration set to 1 second
-        self.duration = 1
+        # Bring in the UV light source model as an equation
+        self.eqn_model = fit(16, plotter = False)
 
     def callback_stop_command(self, msg):
         """
@@ -138,10 +140,22 @@ class IrradianceVectors(object):
                 i+=1
 
             # Publish both the location of the end effector and the vectors list
-            # for the accumulation modeling
+            # in a single array.
             ee_pose = np.array([ee_trans[0],ee_trans[1],ee_trans[2]], dtype=np.float32)
             dir_ir_vector = np.array(self.vectors.ravel(), dtype=np.float32)
             self.vector_array_pub.publish(np.concatenate((ee_pose, dir_ir_vector)))
+
+            # Publish PoseStampeda
+            self.ee_pose_stamped.header.stamp = rospy.Time.now()
+            self.ee_pose_stamped.pose.position.x = ee_trans[0]
+            self.ee_pose_stamped.pose.position.y = ee_trans[1]
+            self.ee_pose_stamped.pose.position.z = ee_trans[2]
+            self.ee_pose_stamped.pose.orientation.x = ee_rot[0]
+            self.ee_pose_stamped.pose.orientation.y = ee_rot[1]
+            self.ee_pose_stamped.pose.orientation.z = ee_rot[2]
+            self.ee_pose_stamped.pose.orientation.w = ee_rot[3]
+            self.ee_pose_pub.publish(self.ee_pose_stamped)
+
             rate.sleep()
 
     def find_ee_pose(self):
