@@ -2,14 +2,16 @@
 
 import rospy
 import sys
+import message_filters
 
-from geometry_msgs.msg import PolygonStamped, Point32
+from geometry_msgs.msg import PoseStamped, PoseArray
 from sensor_msgs.msg import JointState
+from std_msgs.msg import Header, String, Float32
+from sensor_msgs.msg import PointCloud
+from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
-from std_msgs.msg import Header
 from fetch_sim2real.msg import HeaderArray
 
-import message_filters
 
 class SyncData:
     """
@@ -19,16 +21,74 @@ class SyncData:
         """
 
         """
-        region_sub = message_filters.Subscriber('/accumulation_map', HeaderArray)
-        sub_2 = message_filters.Subscriber('/joint_states', JointState)
+        # Initialize subscribers
+        self.waypoints_sub  = rospy.Subscriber('/waypoints',      PoseArray,         self.callback_waypoints)
+        self.pointcloud_sub = rospy.Subscriber('/filtered_cloud', PointCloud,        self.callback_pointcloud)
+        self.velocities_sub = rospy.Subscriber('velocities',      numpy_msg(Floats), self.callback_velocities)
+        self.stop_sub       = rospy.Subscriber('/stop',           String,            self.callback_stop_command)
 
-        sync = message_filters.ApproximateTimeSynchronizer([region_sub, sub_2], queue_size=10, slop=0.1)
-        sync.registerCallback(self.callback)
 
-        print("made it here")
+        self.accumulation_map_sub = message_filters.Subscriber('/accumulation_map', HeaderArray)
+        self.joint_states_sub     = message_filters.Subscriber('/joint_states',     JointState)
+        self.ee_pose_sub          = message_filters.Subscriber('/ee_pose',          PoseStamped)
 
-    def callback(self, msg1, msg2):
-        rospy.loginfo('Got a pair of messages')
+        sync = message_filters.ApproximateTimeSynchronizer([self.accumulation_map_sub,
+                                                            self.joint_states_sub,
+                                                            self.ee_pose_sub],
+                                                            queue_size=10,
+                                                            slop=0.1)
+        sync.registerCallback(self.callback_sync)
+
+        # Initialize filtered_cloud list
+        self.filtered_cloud = []
+
+        # Initialize waypoints list
+        self.waypoints = []
+
+        # Initialize velocities List
+        self.velocities = []
+
+        # Initiailze command String
+        self.command = "start"
+
+    def callback_pointcloud(self, msg):
+        """
+        Function that stores the filtered point cloud and create new octree for
+        castRay calculations.
+        :param self: The self reference.
+        :param msg: The PointCloud message type.
+        """
+        # Store the filtered point cloud
+        self.filtered_cloud = msg
+
+    def callback_waypoints(self,msg):
+        """
+        Function that stores the PoseArray messages.
+        :param self: The self reference.
+        :param msg: The PoseArray message type.
+        """
+        self.waypoints = msg
+
+    def callback_velocities(self,msg):
+        """
+        Function that stores the Float messages.
+        :param self: The self reference.
+        :param msg: The Float array message.
+        """
+        self.velocities = msg
+
+    def callback_stop_command(self,msg):
+        """
+        Function that stores the String message.
+        :param self: The self reference.
+        :param msg: The String message.
+        """
+        self.command = msg
+
+    def callback_sync(self, msg1, msg2, msg3):
+        rospy.loginfo('Got three messages')
+
+
 
 
 if __name__ == '__main__':
