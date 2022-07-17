@@ -41,12 +41,6 @@ class IrradianceVectors(object):
         self.header.frame_id = "/base_link"
         self.header.stamp = rospy.Time.now()
 
-        # Initialize the end effector PointStamped message type. Used for Transformation Matrix
-        self.ee_point_stamp = PointStamped()
-        self.ee_point_stamp.header = Header()
-        self.ee_point_stamp.header.frame_id = "/ee_link"
-        self.ee_point_stamp.header.stamp = rospy.Time.now()
-
         # Initialize the end effector PoseStamped message type. Used for data storage
         self.ee_pose_stamped = PoseStamped()
         self.ee_pose_stamped.header = self.header
@@ -97,7 +91,7 @@ class IrradianceVectors(object):
         while self.command == "start":
             # self.get_matrix returns a transformation matrix that convers coordinates
             # in the ee_link frame to the base_link frame
-            M = self.get_matrix(self.ee_point_stamp)
+            M = self.get_matrix()
 
             # self.find_ee_pose() gets the translational and rotational difference
             # from the end_effector to the base_link. Essentially, the end_effector's
@@ -145,7 +139,7 @@ class IrradianceVectors(object):
             dir_ir_vector = np.array(self.vectors.ravel(), dtype=np.float32)
             self.vector_array_pub.publish(np.concatenate((ee_pose, dir_ir_vector)))
 
-            # Publish PoseStampeda
+            # Publish PoseStamped
             self.ee_pose_stamped.header.stamp = rospy.Time.now()
             self.ee_pose_stamped.pose.position.x = ee_trans[0]
             self.ee_pose_stamped.pose.position.y = ee_trans[1]
@@ -174,23 +168,22 @@ class IrradianceVectors(object):
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
 
-    def get_matrix(self, ee_point_stamp):
+    def get_matrix(self):
         """
         Function that returns a transformation matrix from the ee_link to
         the target frame, the base_link.
         :param self: The self Reference.
-        :param ee_point_stamp: The PointStamped message type.
 
-        :return t_matrix: The transformation matrix.
+        :return transform_matrix: The transformation matrix.
         """
         while not rospy.is_shutdown():
             try:
-                ee_point_stamp = Header()
-                ee_point_stamp.frame_id = "/ee_link"
-                ee_point_stamp.stamp = rospy.Time.now()
-                t_matrix = self.listener.asMatrix('/base_link', ee_point_stamp)
-                return t_matrix
-                if t_matrix:
+                ee_header = Header()
+                ee_header.frame_id = "/ee_link"
+                ee_header.stamp = rospy.Time.now()
+                transform_matrix = self.listener.asMatrix('/base_link', ee_header)
+                return transform_matrix
+                if transform_matrix:
                     break
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
