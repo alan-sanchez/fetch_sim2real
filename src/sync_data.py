@@ -1,9 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import sys
 import message_filters
 import pandas as pd
+import os
 # import csv
 
 from geometry_msgs.msg import PoseStamped, PoseArray
@@ -29,7 +30,9 @@ class SyncData:
         self.waypoints_sub  = rospy.Subscriber('/waypoints',      PoseArray,         self.callback_waypoints)
         self.pointcloud_sub = rospy.Subscriber('/filtered_cloud', PointCloud,        self.callback_pointcloud)
         self.velocities_sub = rospy.Subscriber('/velocities',     numpy_msg(Floats), self.callback_velocities)
-        self.stop_sub       = rospy.Subscriber('/stop',           String,            self.callback_stop_command)
+        self.stop_sub       = rospy.Subscriber('/stop',           String,            self.export_data)
+        self.stop_sub       = rospy.Subscriber('/start',          String,            self.simulation_number)
+
 
 
         self.accumulation_map_sub = message_filters.Subscriber('/accumulation_map', HeaderArray)
@@ -55,6 +58,22 @@ class SyncData:
         # Initiailze command String
         self.command = "start"
 
+        # Get the current working directory of they sync_data node
+        cwd =  os.path.dirname(__file__)
+
+        # Change the current working directory to the simulation_data folder
+        os.chdir(cwd)
+        os.chdir('..')
+        os.chdir('simulation_data')
+
+        self.cwd = os.getcwd()
+
+        # Initialize directory path. This will be updated every simulation
+        self.directory = self.cwd
+        self.sim_iteration = 0
+
+        self.add_df_header = True
+
 
     def callback_pointcloud(self, msg):
         """
@@ -66,6 +85,7 @@ class SyncData:
         # Store the filtered point cloud
         self.filtered_cloud = msg
 
+
     def callback_waypoints(self,msg):
         """
         Function that stores the PoseArray messages.
@@ -73,6 +93,8 @@ class SyncData:
         :param msg: The PoseArray message type.
         """
         self.waypoints = msg
+
+
 
     def callback_velocities(self,msg):
         """
@@ -82,34 +104,102 @@ class SyncData:
         """
         self.velocities = msg
 
-    def callback_stop_command(self,msg):
+
+    def export_data(self,msg):
         """
         Function that stores the String message.
         :param self: The self reference.
         :param msg: The String message.
         """
         self.command = msg
-        ee_loc_header = ['Position_x', 'Position_y','Position_z', 'Quaternion_x', 'Quaternion_y', 'Quaternion_z', 'Quaternion_w']
-        # with open("CSVFILE.csv", 'w') as file:
-        #     dw = DictWriter(file, delimiter=',',
-        #                     fieldnames=ee_loc_header)
-        #     dw.writeheader()
+
+        df_vel = pd.DataFrame(self.velocities.data)
+        df_vel.to_csv('velocities.csv', index=False, header=False)
+
+        vel = {}
+        vel = []
+        for i in range(len(self.waypoints.poses)):
+            vel.append([self.waypoints.poses[i].position.x,
+                      self.waypoints.poses[i].position.y,
+                      self.waypoints.poses[i].position.z,
+                      self.waypoints.poses[i].orientation.x,
+                      self.waypoints.poses[i].orientation.y,
+                      self.waypoints.poses[i].orientation.z,
+                      self.waypoints.poses[i].orientation.w])
+
+        df_waypoints = pd.DataFrame(vel)
+        df_waypoints.to_csv('waypoints.csv', index=False, header=False)
+
+        # df_vel = pd.DataFrame(self.filtered_cloud.points)
+        # df_vel.to_csv('depth_map.csv')
 
 
+
+    def simulation_number(self,msg):
+        self.sim_iteration += 1
+
+        folder = 'simulation_' + str(self.sim_iteration)
+
+        if os.path.exists(folder):
+            print("File already exists")
+        else:
+            self.directory = os.path.join(self.cwd, folder)
+            os.mkdir(self.directory)
+            os.chdir(self.directory)
 
 
     def callback_sync(self, msg1, msg2, msg3):
-        ee_loc = [msg3.pose.position.x, msg3.pose.position.x, msg3.pose.position.x, msg3.pose.orientation.x, msg3.pose.orientation.y, msg3.pose.orientation.z, msg3.pose.orientation.w]
-        #
-        # df = pd.DataFrame(ee_loc, index=['ee_pose'],columns = ee_loc_header)
-        #
-        # df.to_csv('Test.csv', mode='a', index=False, header=False)
+        ######################## Accumulation Map Data ############################
+        acc_map_data = {}
+        acc_map_data['ROS Time'] = msg1.header.stamp.to_sec()
+        for i in range(int(len(msg1.data)/4)):
+            hit_loc = 'hit_loc_' + str(i)
+            acc_map_data[hit_loc] = [msg1.data[i*4 + 0],msg1.data[i*4 + 1],msg1.data[i*4 + 2], msg1.data[i*4 + 3]]
 
-        with open ('CSVFILE.csv', 'a+') as f_object:
-            writer_object = writer(f_object)
-            writer_object.writerow(ee_loc)
+        df_acc = pd.DataFrame([acc_map_data])
 
-        rospy.loginfo('Got three messages')
+        ########################### End Effector Data ############################
+        ee_data = {'ROS Time ': msg3.header.stamp.to_sec(),
+                    'Position_x ': msg3.pose.position.x,
+                    'Position_y ': msg3.pose.position.y,
+                    'Position_z ': msg3.pose.position.z,
+                    'Quaternion_x ': msg3.pose.orientation.x,
+                    'Quaternion_y ': msg3.pose.orientation.y,
+                    'Quaternion_z ': msg3.pose.orientation.z,
+                    'Quaternion_w ': msg3.pose.orientation.w}
+
+        df_ee = pd.DataFrame([ee_data])
+
+        ########################### Joint States Data ############################
+        joint_states_data = {}
+        joint_states_data['ROS Time'] = msg3.header.stamp.to_sec()
+        for i in range(len(msg2.name)):
+            joint_states_data[msg2.name[i]] = msg2.position[i]
+
+        df_joints = pd.DataFrame([joint_states_data])
+
+        ############################# Store Data #################################
+        if self.add_df_header:
+            df_acc.to_csv('accumulation_map.csv', mode='a', index=False, header=True)
+            df_ee.to_csv('ee_location.csv',       mode='a', index=False, header=True)
+            df_joints.to_csv('joint_states.csv',  mode='a', index=False, header=True)
+            self.add_df_header = False
+
+        else:
+            df_acc.to_csv('accumulation_map.csv', mode='a', index=False, header=False)
+            df_ee.to_csv('ee_location.csv',       mode='a', index=False, header=False)
+            df_joints.to_csv('joint_states.csv',  mode='a', index=False, header=False)
+
+        #
+
+
+
+
+
+
+
+
+
 
 
 
