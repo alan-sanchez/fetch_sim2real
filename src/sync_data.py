@@ -28,7 +28,7 @@ class SyncData:
         """
         # Initialize subscribers
         self.waypoints_sub  = rospy.Subscriber('/waypoints',      PoseArray,         self.callback_waypoints)
-        self.pointcloud_sub = rospy.Subscriber('/filtered_cloud', PointCloud,        self.callback_pointcloud)
+        self.pointcloud_sub = rospy.Subscriber('/filtered_cloud', PointCloud,        self.callback_depth_map)
         self.velocities_sub = rospy.Subscriber('/velocities',     numpy_msg(Floats), self.callback_velocities)
         self.stop_sub       = rospy.Subscriber('/stop',           String,            self.export_data)
         self.stop_sub       = rospy.Subscriber('/start',          String,            self.simulation_number)
@@ -46,8 +46,8 @@ class SyncData:
                                                             slop=0.1)
         sync.registerCallback(self.callback_sync)
 
-        # Initialize filtered_cloud list
-        self.filtered_cloud = []
+        # Initialize depth_map list
+        self.depth_map = []
 
         # Initialize waypoints list
         self.waypoints = []
@@ -75,16 +75,14 @@ class SyncData:
         self.add_df_header = True
 
 
-    def callback_pointcloud(self, msg):
+    def callback_depth_map(self, msg):
         """
         Function that stores the filtered point cloud and create new octree for
         castRay calculations.
         :param self: The self reference.
         :param msg: The PointCloud message type.
         """
-        # Store the filtered point cloud
-        self.filtered_cloud = msg
-
+        self.depth_map = msg
 
     def callback_waypoints(self,msg):
         """
@@ -107,31 +105,33 @@ class SyncData:
 
     def export_data(self,msg):
         """
-        Function that stores the String message.
+        Function that exports velocity, waypoints, and filtered pointcloud (depth map).
         :param self: The self reference.
         :param msg: The String message.
         """
-        self.command = msg
-
         df_vel = pd.DataFrame(self.velocities.data)
         df_vel.to_csv('velocities.csv', index=False, header=False)
 
-        vel = {}
         vel = []
         for i in range(len(self.waypoints.poses)):
             vel.append([self.waypoints.poses[i].position.x,
-                      self.waypoints.poses[i].position.y,
-                      self.waypoints.poses[i].position.z,
-                      self.waypoints.poses[i].orientation.x,
-                      self.waypoints.poses[i].orientation.y,
-                      self.waypoints.poses[i].orientation.z,
-                      self.waypoints.poses[i].orientation.w])
+                        self.waypoints.poses[i].position.y,
+                        self.waypoints.poses[i].position.z,
+                        self.waypoints.poses[i].orientation.x,
+                        self.waypoints.poses[i].orientation.y,
+                        self.waypoints.poses[i].orientation.z,
+                        self.waypoints.poses[i].orientation.w])
 
         df_waypoints = pd.DataFrame(vel)
         df_waypoints.to_csv('waypoints.csv', index=False, header=False)
 
-        # df_vel = pd.DataFrame(self.filtered_cloud.points)
-        # df_vel.to_csv('depth_map.csv')
+        depth_map = []
+        for i in range(len(self.depth_map.points)):
+            depth_map.append([self.depth_map.points[i].x,
+                              self.depth_map.points[i].y,
+                              self.depth_map.points[i].z])
+        df_depth_map = pd.DataFrame(depth_map)
+        df_depth_map.to_csv('depth_map.csv', index=False, header=False)
 
 
 
@@ -190,7 +190,7 @@ class SyncData:
             df_ee.to_csv('ee_location.csv',       mode='a', index=False, header=False)
             df_joints.to_csv('joint_states.csv',  mode='a', index=False, header=False)
 
-        #
+
 
 
 
