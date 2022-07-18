@@ -8,6 +8,6 @@
 <node pkg="fetch_sim2real" type="execute_path.py"       name="execute_path"       output="screen"/>
 <node pkg="fetch_sim2real" type="irradiance_vectors.py" name="irradiance_vectors" output="screen"/>
 <node pkg="fetch_sim2real" type="accumulation_map.py"   name="accumulation_map"   output="screen"/>
-
+<node pkg="fetch_sim2real" type="sync_data.py"          name="sync_data"          output="screen"/>
 
 </launch>
