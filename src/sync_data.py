@@ -158,6 +158,14 @@ class SyncData:
 
 
     def callback_sync(self, msg1, msg2, msg3):
+        """
+        Function that sync three different message types, creates a dataframe
+        for each othe message, and exports the dataframes to their own .csv file.
+        :param self: The self reference.
+        :param msg1: A HeaderArray message type.
+        :param msg2: A JointState message type.
+        :param msg3: A PoseStamp message type.
+        """
 
         # Create dataframe for accumulation_map (df_acc)
         acc_map_data = {}
@@ -167,6 +175,16 @@ class SyncData:
             acc_map_data[hit_loc] = [msg1.data[i*4 + 0],msg1.data[i*4 + 1],msg1.data[i*4 + 2], msg1.data[i*4 + 3]]
 
         df_acc = pd.DataFrame([acc_map_data])
+
+
+        # Create data frame for the joint states (df_joints)
+        joint_states_data = {}
+        joint_states_data['ROS Time'] = msg2.header.stamp.to_sec()
+        for i in range(len(msg2.name)):
+            joint_states_data[msg2.name[i]] = msg2.position[i]
+
+        df_joints = pd.DataFrame([joint_states_data])
+
 
         # Create dataframe for end effector location (df_ee)
         ee_data = {'ROS Time ': msg3.header.stamp.to_sec(),
@@ -180,13 +198,6 @@ class SyncData:
 
         df_ee = pd.DataFrame([ee_data])
 
-        # Create data frame for the joint states (df_joints)
-        joint_states_data = {}
-        joint_states_data['ROS Time'] = msg3.header.stamp.to_sec()
-        for i in range(len(msg2.name)):
-            joint_states_data[msg2.name[i]] = msg2.position[i]
-
-        df_joints = pd.DataFrame([joint_states_data])
 
         # Create and append dataframes to .csv file
         if self.add_df_header:
