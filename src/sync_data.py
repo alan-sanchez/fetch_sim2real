@@ -5,7 +5,6 @@ import sys
 import message_filters
 import pandas as pd
 import os
-# import csv
 
 from geometry_msgs.msg import PoseStamped, PoseArray
 from sensor_msgs.msg import JointState
@@ -14,17 +13,17 @@ from sensor_msgs.msg import PointCloud
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 from fetch_sim2real.msg import HeaderArray
-from csv import writer, DictWriter
 
 
 
 class SyncData:
     """
-
+    A class that stores messages to its own .csv file.
     """
     def __init__(self):
         """
-
+        A Function that initializes the subscribers, variables, and working directory.
+        :param self: The self reference.
         """
         # Initialize subscribers
         self.waypoints_sub  = rospy.Subscriber('/waypoints',      PoseArray,         self.callback_waypoints)
@@ -68,10 +67,11 @@ class SyncData:
 
         self.cwd = os.getcwd()
 
-        # Initialize directory path. This will be updated every simulation
+        # Initialize directory path. This will be updated every simulation run
         self.directory = self.cwd
         self.sim_iteration = 0
 
+        # Create boolean for conditional statement for adding headers to .csv files
         self.add_df_header = True
 
 
@@ -109,22 +109,24 @@ class SyncData:
         :param self: The self reference.
         :param msg: The String message.
         """
+        # Create dataframe for the waypoint velocities and save to .csv file
         df_vel = pd.DataFrame(self.velocities.data)
         df_vel.to_csv('velocities.csv', index=False, header=False)
 
-        vel = []
+        # Create dataframe for waypoints and save to .csv file
+        points = []
         for i in range(len(self.waypoints.poses)):
-            vel.append([self.waypoints.poses[i].position.x,
+            points.append([self.waypoints.poses[i].position.x,
                         self.waypoints.poses[i].position.y,
                         self.waypoints.poses[i].position.z,
                         self.waypoints.poses[i].orientation.x,
                         self.waypoints.poses[i].orientation.y,
                         self.waypoints.poses[i].orientation.z,
                         self.waypoints.poses[i].orientation.w])
-
-        df_waypoints = pd.DataFrame(vel)
+        df_waypoints = pd.DataFrame(points)
         df_waypoints.to_csv('waypoints.csv', index=False, header=False)
 
+        # Create dataframe for depth_map and save to .csv file
         depth_map = []
         for i in range(len(self.depth_map.points)):
             depth_map.append([self.depth_map.points[i].x,
@@ -136,20 +138,28 @@ class SyncData:
 
 
     def simulation_number(self,msg):
+        """
+        Function that creates new folder directory for new simulation data.
+        :param self: The self reference.
+        :param msg: A string message.
+        """
+        # Iterate before simulation and create updated directory
         self.sim_iteration += 1
-
         folder = 'simulation_' + str(self.sim_iteration)
 
+        # If previous folder already exists, notify user
         if os.path.exists(folder):
-            print("File already exists")
+            rospy.logwarn(str(folder) + " already exists!")
         else:
             self.directory = os.path.join(self.cwd, folder)
+           # Create new folder directory
             os.mkdir(self.directory)
             os.chdir(self.directory)
 
 
     def callback_sync(self, msg1, msg2, msg3):
-        ######################## Accumulation Map Data ############################
+
+        # Create dataframe for accumulation_map (df_acc)
         acc_map_data = {}
         acc_map_data['ROS Time'] = msg1.header.stamp.to_sec()
         for i in range(int(len(msg1.data)/4)):
@@ -158,7 +168,7 @@ class SyncData:
 
         df_acc = pd.DataFrame([acc_map_data])
 
-        ########################### End Effector Data ############################
+        # Create dataframe for end effector location (df_ee)
         ee_data = {'ROS Time ': msg3.header.stamp.to_sec(),
                     'Position_x ': msg3.pose.position.x,
                     'Position_y ': msg3.pose.position.y,
@@ -170,7 +180,7 @@ class SyncData:
 
         df_ee = pd.DataFrame([ee_data])
 
-        ########################### Joint States Data ############################
+        # Create data frame for the joint states (df_joints)
         joint_states_data = {}
         joint_states_data['ROS Time'] = msg3.header.stamp.to_sec()
         for i in range(len(msg2.name)):
@@ -178,7 +188,7 @@ class SyncData:
 
         df_joints = pd.DataFrame([joint_states_data])
 
-        ############################# Store Data #################################
+        # Create and append dataframes to .csv file
         if self.add_df_header:
             df_acc.to_csv('accumulation_map.csv', mode='a', index=False, header=True)
             df_ee.to_csv('ee_location.csv',       mode='a', index=False, header=True)
@@ -191,21 +201,10 @@ class SyncData:
             df_joints.to_csv('joint_states.csv',  mode='a', index=False, header=False)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
+    # Initialize sync_data node
     rospy.init_node('sync_data', argv=sys.argv)
 
+    # Instantiate the SyncData class
     SyncData()
     rospy.spin()
