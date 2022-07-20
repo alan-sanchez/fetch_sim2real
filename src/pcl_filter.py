@@ -3,8 +3,6 @@
 # Import modules
 import rospy
 import numpy as np
-import ctypes
-import struct
 import tf
 import sensor_msgs.point_cloud2 as pc2
 

@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 # Import modules
-import sys
-import actionlib
 import rospy
 import numpy as np
 import octomap

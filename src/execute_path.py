@@ -2,8 +2,6 @@
 
 # Import modules
 import sys
-import actionlib
-import subprocess
 import rospy
 import moveit_commander
 import moveit_msgs.msg
