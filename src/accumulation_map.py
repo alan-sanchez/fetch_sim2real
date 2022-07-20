@@ -41,7 +41,8 @@ class AccumulationMap:
 
         self.acc_map_list = []
 
-        self.required_dose = 0
+        # The required UV Dose for a UV rate constant of 0.0867 m^2/J is 132.8 (J/m^2)
+        self.required_dose = 132.8
 
         # Set a previous time as none. This will be used for [ADD HERE]
         self.prev_time = rospy.get_time()
