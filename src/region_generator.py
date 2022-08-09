@@ -19,9 +19,9 @@ class Region:
     """
     def __init__(self):
         """
-		Initializes publishers and other message types.
-		:param self: The self reference.
-		"""
+        Initializes publishers and other message types.
+        :param self: The self reference.
+        """
         # Initialize Publishers
         self.region_pub        = rospy.Publisher('region',        PolygonStamped, queue_size=1)
         self.offset_region_pub = rospy.Publisher('offset_region', PolygonStamped, queue_size=1)
@@ -44,11 +44,11 @@ class Region:
 
     def convex_hull(self):
         """
-		Function that uses that convex hull method to create region.
-		:param self: The self reference.
+        Function that uses that convex hull method to create region.
+        :param self: The self reference.
 
         :publishes self.region: The PolygonStamped Message
-		"""
+        """
 
         # Create an empty list to stor random points
         coord = []
