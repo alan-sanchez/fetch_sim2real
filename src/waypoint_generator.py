@@ -80,7 +80,6 @@ class WaypointGenerator:
         # Run waypoint planner for non-planar surfaces.
         self.waypoint_generator()
 
-
     def callback_region(self, msg):
         """
         Callback function that parses the PolygonStamped message type to two
@@ -100,7 +99,6 @@ class WaypointGenerator:
         # Append first x and y coordinates to close the polygon loop
         self.Polygon_X.append(self.Polygon_X[0])
         self.Polygon_Y.append(self.Polygon_Y[0])
-
 
     def waypoint_generator(self):
         """
@@ -126,101 +124,64 @@ class WaypointGenerator:
 
         # Create lists for waypoints and waypoint markers that will be publish
         poses = []
-        # marker_list = []
+        marker_list = []
 
 ########################## Test Case 1: Fixed height ###########################
-        for i in range(len(px)):
+        # for i in range(len(px)):
 
+        #     # Include characteristics of a pose
+        #     p = Pose()
+        #     p.position.x = px[i]#self.cloud_x[index]
+        #     p.position.y = py[i]#self.cloud_y[index]
+        #     p.position.z = max(self.cloud_z) + self.offset#self.cloud_z[index] + self.offset
+        #     p.orientation.x = 0
+        #     p.orientation.y = .7070
+        #     p.orientation.z = 0
+        #     p.orientation.w = .7070
+        #     poses.append(p)
+
+        #     # Create new marker id and pose to be published
+        #     self.waypoints_marker.id = i
+        #     self.waypoints_marker.pose = p
+        #     self.waypoints_marker_pub.publish(self.waypoints_marker)
+        #     rospy.sleep(0.01)
+
+################### Test Case 2: Height Change in Z axis Only #################
+        for i in range(len(px)):
+            # Get index values closest neighbors of the planned x and y values
+            # in the KDtree
+            closest_points_ii = tree.query_ball_point([px[i],py[i]], 0.05)
+        
+            # If there are no closest neighbors, then continue to next iteration
+            # of the for loop
+            if len(closest_points_ii ) == 0:
+                continue
+        
+            self.z_val = []
+            # append the z values of the point cloud of the indexed values.
+            for j in closest_points_ii:
+                self.z_val.append(self.cloud_z[j])
+        
+            # Find the index of the max z value from the closest neighbors point cloud
+            index = closest_points_ii[self.z_val.index(max(self.z_val))]
+        
+        
             # Include characteristics of a pose
             p = Pose()
             p.position.x = px[i]#self.cloud_x[index]
             p.position.y = py[i]#self.cloud_y[index]
-            p.position.z = max(self.cloud_z) + self.offset#self.cloud_z[index] + self.offset
+            p.position.z = self.cloud_z[index] + self.offset
             p.orientation.x = 0
             p.orientation.y = .7070
             p.orientation.z = 0
             p.orientation.w = .7070
             poses.append(p)
-
+        
             # Create new marker id and pose to be published
             self.waypoints_marker.id = i
             self.waypoints_marker.pose = p
             self.waypoints_marker_pub.publish(self.waypoints_marker)
             rospy.sleep(0.01)
-
-################ Test Case 3: Offset distance from point normal ################
-
-    # # Pass the pointcloud points to the PolyData constructor. Then run the
-    # # delaunay_2d triangulation function on the PolyData
-    # cloud = pv.PolyData(np.c_[self.cloud_x, self.cloud_y, self.cloud_z])
-    # surf = cloud.delaunay_2d()
-
-    #     for i in range(len(px)):
-    #         # Get index values closest neighbors of the planned 2D x and y value
-    #         # in the KDtree
-    #         closest_points_ii = tree.query_ball_point([px[i],py[i]], 0.05)
-    #
-    #         # If there are no closest neighbors, then continue to next iteration
-    #         # of the for loop
-    #         if len(closest_points_ii ) == 0:
-    #             continue
-    #
-    #         # Create empty list for the z (height) values of the neighbors
-    #         self.z_val = []
-    #         # append the z values of the point cloud of the indexed values.
-    #         for j in closest_points_ii:
-    #             self.z_val.append(self.cloud_z[j])
-    #
-    #
-    #         # Find the index of the max z value from the closest neighbors
-    #         index = closest_points_ii[self.z_val.index(max(self.z_val))]
-    #
-    #         # compute the point_normal angles
-    #         alpha = np.arccos(surf.point_normals[index][0])
-    #         gamma = np.arccos(surf.point_normals[index][1])
-    #         beta  = np.arccos(surf.point_normals[index][2])
-    #         # alpha = math.atan2(surf.points[index][2],surf.points[index][1])
-    #         # gamma = math.atan2(surf.points[index][0],surf.points[index][2])
-    #         # beta = math.atan2(surf.points[index][1],surf.points[index][0])
-    #
-    #         # print(surf.points[index])
-    #         # print(self.cloud_x[index], self.cloud_y[index], self.cloud_z[index])
-    #
-    #         # Run rotation matrix of the three rotation angles
-    #         mat = self.rotation_matrix(alpha,gamma,beta)
-    #         r = R.from_rotvec([[0    , 0    , alpha],
-    #                            [0    , gamma, 0    ],
-    #                            [0    , 0    , beta]])
-    #         # print("Scipy computation:")
-    #         # print(r.as_matrix())
-    #         # Obtain Quaternion values from rotational matrix
-    #         m = R.from_matrix(mat)
-    #         q=m.as_quat()
-    #
-    #         # print(surf.point_normals[index])
-    #
-    #         # project new point
-    #         flipped_normal = [-surf.point_normals[index][0], -surf.point_normals[index][1], -surf.point_normals[index][2]]
-    #         unit_vector = flipped_normal/np.linalg.norm(flipped_normal)
-    #         offset = self.offset * unit_vector
-    #         # print(unit_vector)
-    #
-    #         # Include characteristics of a pose
-    #         p = Pose()
-    #         p.position.x = self.cloud_x[index]# + offset[0]
-    #         p.position.y = self.cloud_y[index]# + offset[1]
-    #         p.position.z = self.cloud_z[index] + offset[2]
-    #         p.orientation.x = q[0]
-    #         p.orientation.y = q[1]
-    #         p.orientation.z = q[2]
-    #         p.orientation.w = -q[3]
-    #         poses.append(p)
-    #
-    #         # Create new marker id and pose to be published
-    #         self.waypoints_marker.id = i
-    #         self.waypoints_marker.pose = p
-    #         self.waypoints_marker.header.stamp = rospy.Time.now()
-    #         self.waypoints_marker_pub.publish(self.waypoints_marker)
 
         # assisn poses to the PoseArray, self,waypoints.
         self.waypoints.poses = poses
@@ -230,8 +191,6 @@ class WaypointGenerator:
 
         # Clear out cloud data for new updated data
         del self.cloud_x[:], self.cloud_y[:], self.cloud_z[:]
-
-
 
 if __name__=="__main__":
     # Initialize the node
