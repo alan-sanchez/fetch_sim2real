@@ -49,4 +49,6 @@ def fit(order = 2, plotter = False):
 
 if __name__ == '__main__':
     model = fit(16, plotter = True)
+    # print(model(2.5))
+    # print(model(5.0))
     # print(model)

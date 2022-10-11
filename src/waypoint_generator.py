@@ -26,11 +26,11 @@ class WaypointGenerator:
         """
         # Initialize Subscribers
         self.pointcloud_sub  = rospy.Subscriber("filtered_cloud", PointCloud,     self.callback_pcl,    queue_size=1)
-        self.region_sub      = rospy.Subscriber("offset_region",  PolygonStamped, self.callback_region, queue_size=1)
+        self.region_sub      = rospy.Subscriber("region",         PolygonStamped, self.callback_region, queue_size=1)
 
         # Initialize Publishers
         self.waypoints_pub        = rospy.Publisher('waypoints'       , PoseArray , queue_size=1)
-        self.waypoints_marker_pub = rospy.Publisher('waypoints_marker', Marker, queue_size=1)
+        self.waypoints_marker_pub = rospy.Publisher('waypoints_marker', Marker,     queue_size=1)
 
         # Setup header
         self.header = Header()
@@ -165,16 +165,15 @@ class WaypointGenerator:
             # Find the index of the max z value from the closest neighbors point cloud
             index = closest_points_ii[self.z_val.index(max(self.z_val))]
         
-        
             # Include characteristics of a pose
             p = Pose()
             p.position.x = px[i]#self.cloud_x[index]
             p.position.y = py[i]#self.cloud_y[index]
             p.position.z = self.cloud_z[index] + self.offset
-            p.orientation.x = 0
-            p.orientation.y = .7070
-            p.orientation.z = 0
-            p.orientation.w = .7070
+            p.orientation.x = 0.0
+            p.orientation.y = 0.7070
+            p.orientation.z = 0.0
+            p.orientation.w = 0.7070
             poses.append(p)
         
             # Create new marker id and pose to be published

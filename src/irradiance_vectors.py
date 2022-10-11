@@ -24,7 +24,7 @@ class IrradianceVectors(object):
         :param self: The self reference.
         """
         # Initialize Subscribers
-        self.start_sub = rospy.Subscriber('start', String, self.ir_vec_calculaor)
+        self.start_sub = rospy.Subscriber('start', String, self.ir_vec_calculator)
         self.stop_sub  = rospy.Subscriber('stop',  String, self.callback_stop_command)
 
         # Initialize Publishers
@@ -48,29 +48,29 @@ class IrradianceVectors(object):
 
     def callback_stop_command(self, msg):
         """
-        A callback function that stores a String message that stops the node from
-        publishing irridance vectors.
+        A callback function that stores a String message that stops this node from
+        publishing irridiance vectors.
         :param self: The self reference.
         :param msg: The String message type.
         """
         self.command = msg.data
 
-    def ir_vec_calculaor(self, msg):
+    def ir_vec_calculator(self, msg):
         """
-        A callback function that stores a String message that stops the node from
-        publishing irridance vectors.
+        A callback function that generates vectors with their given irradiance values
+        and publishes those values, along with the end effector location.
         :param self: The self reference.
         :param msg: The String message type.
         """
         # Set self.command to incoming String message
         self.command = msg.data
 
-        # Generate 3 layers of points that will serve as the LEADING points of
+        # Generate 3 circle layers of points that will serve as the LEADING points of
         # the UV castRays. there will be 1 point in the center, 6 in the middle layer
-        # and 12 in the outer layer. These values are in a list named "n".
-        # "r" reresents the layer distance from the center point
+        # and 12 in the outer layer. These values are defined in a list named "n".
+        # "r" reresents the layer distance from the center point in centimeters
         n = [1, 6, 12]
-        r = [0.0, 0.025, 0.05]
+        r = [0.0, 2.5, 5.0]
 
         # From the previous defined list, n and r, we generate the points in the
         # self.circle_points function
@@ -87,27 +87,26 @@ class IrradianceVectors(object):
         iterations = 0
 
         while self.command == "start":
-            # self.get_matrix returns a transformation matrix that convers coordinates
+            # self.get_matrix returns a transformation matrix that converts coordinates
             # in the ee_link frame to the base_link frame
             M = self.get_matrix()
 
             # self.find_ee_pose() gets the translational and rotational difference
-            # from the end_effector to the base_link. Essentially, the end_effector's
-            # coordinates when using the base_link tf as the reference
+            # from the ee_link to the base_link. Essentially, the ee_link's
+            # coordinates in reference to the base_link tf.
             ee_trans, ee_rot = self.find_ee_pose()
 
             i = 0
 
-            # For each row (a total of 19) of coordiates, we are creating a directional
-            # vector
+            # For each row (a total of 19) of coordiates, we create a directional vector
             for e in circles:
                 # Store the x,y, and z circle coordinates ( which is referencing
                 # the end effector) in a 1 x 4 list for the matrix transformation
                 circle_coord = [e[0], e[1], e[2], 1]
 
                 # transform the circle_coord using the transformation matrix and the
-                # dot product function in numpy. This will get the coordinates to
-                # reference in terms of the base_link tf rather than the ee_link tf
+                # dot product function in numpy. This will get the coordinates in relation
+                # to the base_link
                 transformed_circle_coord = np.dot(M,circle_coord)
 
                 # Compute the direction vector from the coordinates of the
@@ -117,16 +116,16 @@ class IrradianceVectors(object):
                                    transformed_circle_coord[2] - ee_trans[2],
                                    1]
 
-                # Conditioal statement to fill in the irradiance values from our model.
+                # Conditional statement to fill in the irradiance values from our model.
                 # These values will be stored in the 4th column of the vectors dataset
                 if i == 0:
-                    self.vectors[i][3] = self.eqn_model(r[0]*100)
+                    self.vectors[i][3] = self.eqn_model(r[0])
 
                 elif i > 0 and i < 6:
-                    self.vectors[i][3] = self.eqn_model(r[1]*100)
+                    self.vectors[i][3] = self.eqn_model(r[1])
 
                 elif i >= 6:
-                    self.vectors[i][3] = self.eqn_model(r[2]*100)
+                    self.vectors[i][3] = self.eqn_model(r[2])
 
                 # Increment for the conditional statement above
                 i+=1
@@ -137,7 +136,7 @@ class IrradianceVectors(object):
             dir_ir_vector = np.array(self.vectors.ravel(), dtype=np.float32)
             self.vector_array_pub.publish(np.concatenate((ee_pose, dir_ir_vector)))
 
-            # Publish PoseStamped
+            # Publish PoseStamped of the end effector
             self.ee_pose_stamped.header.stamp = rospy.Time.now()
             self.ee_pose_stamped.pose.position.x = ee_trans[0]
             self.ee_pose_stamped.pose.position.y = ee_trans[1]

@@ -96,37 +96,40 @@ class AccumulationMap:
         """
         # This resets the prev_time variable to None after a trajectory execution
         # is complete. This is because there is a 2 second wait time before the user
-        # can generate another random region to disinfect.
+        # can generate another random region to disinfect
         if (rospy.get_time() - self.prev_time) > 2.0:
             self.prev_time = None
 
-        # For the first  or reset of the prev_time variable.
+        # A conditional statement for the first  or reset of the prev_time variable.
+        # If true, then the self.prev_time is defined and the the hit list and accumulation
+        # map lists are cleared out
         if self.prev_time == None:
             self.prev_time = rospy.get_time()
             del self.hit_list[:], self.acc_map_list[:]
 
 
-        # The end effector location and its referencing the base link.
+        # Extract the end effector location data. NOTE: These coordinates are
+        # referencing the base_link transform frame
         ee_loc = np.array([msg.data[0], msg.data[1], msg.data[2]], dtype=np.double)
 
-        # The direction vectors and their irradiance values are set as a long list
+        # Extract the direction vectors and their irradiance values 
         dir_ir_vectors = msg.data[3:]
 
-        # end is a zero array where the location of the hit will be stored.
+        # end is initializes and set as a zero array where the location of the hit will be stored
         end = np.array([0,0,0], dtype=np.double)
 
-        # Compute the time exposure
+        # Compute the UV time exposure 
         time_exposure = abs(rospy.get_time() - self.prev_time)
 
-        # Use for loop to parse directional vector data and check if each hits
-        # a location in the disinfection region.
+        # Use for loop to parse directional vector data and check if each vector
+        # hits a occupancy cube in the 3D disinfection grid map.
         for j in range(int(len(dir_ir_vectors)/4)):
 
             vector = np.array([dir_ir_vectors[j*4 + 0],
                                dir_ir_vectors[j*4 + 1],
                                dir_ir_vectors[j*4 + 2]], dtype=np.double)
 
-            # Use castRay function in octree class to return a hit location
+            # Use the castRay function in octree class to return a hit location
             hit = self.octree.castRay(ee_loc,
                                       vector,
                                       end,
@@ -135,20 +138,21 @@ class AccumulationMap:
 
             # If there is a hit, then continue next set of computations
             if hit:
-                # Get euclidean distance from hit location and ee_link position.
+                # Get euclidean distance from hit location and ee_link position
                 Ray_length = np.sqrt(np.sum((end-ee_loc)**2, axis=0))
 
-                # The the distance ratio between the castRay and our measurements
-                # from our model (0.3m)
+                # Use the distance ratio equation between the castRay and our 
+                # measurements from our model (0.3m)
                 dist_ratio = (0.3**2)/(Ray_length**2)
 
-                # Extract the irradiance value for the given directional vector
+                # Extract the irradiance value for the parsed directional vector
                 ir =  dir_ir_vectors[j*4 + 3]
 
                 # Compute the UV dose for each vector
                 dose = dist_ratio * time_exposure * ir
 
-                # Use for loop to update self.hit_list, self.dose_list, and self.accumulation_map
+                # If end (which was converted to a list using the `tolist()` function) is
+                # in self.hit_list, then update self.acc_map_list 
                 if end.tolist() in self.hit_list:
                     index = self.hit_list.index(end.tolist())
                     self.acc_map_list[index][3] = dose + self.acc_map_list[index][3]
@@ -157,11 +161,15 @@ class AccumulationMap:
                     self.hit_list.append(end.tolist())
                     self.acc_map_list.append([end.tolist()[0], end.tolist()[1], end.tolist()[2], dose - self.required_dose])
 
+        # create an array that has the accumulation map values
         arr = np.array(self.acc_map_list)
         self.accumulation_map.data = (np.array(arr.ravel(), dtype=np.float32))
         self.accumulation_map.header.stamp = rospy.Time.now()
+
+        # Publish the array
         self.acc_map_pub.publish(self.accumulation_map)
 
+        # Set new prev_time as current time before the beginning of next loop iteration
         self.prev_time = rospy.get_time()
 
 

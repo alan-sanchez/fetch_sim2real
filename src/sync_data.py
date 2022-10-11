@@ -32,8 +32,6 @@ class SyncData:
         self.stop_sub       = rospy.Subscriber('/stop',           String,            self.export_data)
         self.stop_sub       = rospy.Subscriber('/start',          String,            self.simulation_number)
 
-
-
         self.accumulation_map_sub = message_filters.Subscriber('/accumulation_map', HeaderArray)
         self.joint_states_sub     = message_filters.Subscriber('/joint_states',     JointState)
         self.ee_pose_sub          = message_filters.Subscriber('/ee_pose',          PoseStamped)
@@ -74,11 +72,9 @@ class SyncData:
         # Create boolean for conditional statement for adding headers to .csv files
         self.add_df_header = True
 
-
     def callback_depth_map(self, msg):
         """
-        Function that stores the filtered point cloud and create new octree for
-        castRay calculations.
+        Function that stores the filtered point cloud 
         :param self: The self reference.
         :param msg: The PointCloud message type.
         """
@@ -92,8 +88,6 @@ class SyncData:
         """
         self.waypoints = msg
 
-
-
     def callback_velocities(self,msg):
         """
         Function that stores the Float messages.
@@ -101,7 +95,6 @@ class SyncData:
         :param msg: The Float array message.
         """
         self.velocities = msg
-
 
     def export_data(self,msg):
         """
@@ -135,8 +128,6 @@ class SyncData:
         df_depth_map = pd.DataFrame(depth_map)
         df_depth_map.to_csv('depth_map.csv', index=False, header=False)
 
-
-
     def simulation_number(self,msg):
         """
         Function that creates new folder directory for new simulation data.
@@ -155,7 +146,6 @@ class SyncData:
            # Create new folder directory
             os.mkdir(self.directory)
             os.chdir(self.directory)
-
 
     def callback_sync(self, msg1, msg2, msg3):
         """
@@ -176,7 +166,6 @@ class SyncData:
 
         df_acc = pd.DataFrame([acc_map_data])
 
-
         # Create data frame for the joint states (df_joints)
         joint_states_data = {}
         joint_states_data['ROS Time'] = msg2.header.stamp.to_sec()
@@ -184,7 +173,6 @@ class SyncData:
             joint_states_data[msg2.name[i]] = msg2.position[i]
 
         df_joints = pd.DataFrame([joint_states_data])
-
 
         # Create dataframe for end effector location (df_ee)
         ee_data = {'ROS Time ': msg3.header.stamp.to_sec(),
@@ -198,7 +186,6 @@ class SyncData:
 
         df_ee = pd.DataFrame([ee_data])
 
-
         # Create and append dataframes to .csv file
         if self.add_df_header:
             df_acc.to_csv('accumulation_map.csv', mode='a', index=False, header=True)
@@ -210,7 +197,6 @@ class SyncData:
             df_acc.to_csv('accumulation_map.csv', mode='a', index=False, header=False)
             df_ee.to_csv('ee_location.csv',       mode='a', index=False, header=False)
             df_joints.to_csv('joint_states.csv',  mode='a', index=False, header=False)
-
 
 if __name__ == '__main__':
     # Initialize sync_data node

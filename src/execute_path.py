@@ -58,9 +58,8 @@ class ExecutePath(object):
         # Initialize waypoints variable
         self.waypoints = None
 
-        # Define table plane
-        # This creates objects in the planning scene that mimic the ground
-        # If these were not in place gripper could hit the ground
+        # This creates objects in the planning scene that mimic the table
+        # If these were not in place gripper could hit the table
         self.planning_scene = PlanningSceneInterface("base_link")
         # self.planning_scene.removeCollisionObject("Table")
         # self.planning_scene.addBox("Table", size_x=1, size_y=1.5, size_z=0.05, x=1, y=0, z=0.625 )
