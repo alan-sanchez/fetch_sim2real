@@ -12,7 +12,6 @@ from std_msgs.msg import Header, String, Float32
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 
-
 class IrradianceVectors(object):
     """
     A class that publishes the direction and irridance values of the UV vectors
@@ -87,12 +86,12 @@ class IrradianceVectors(object):
         iterations = 0
 
         while self.command == "start":
-            # self.get_matrix returns a transformation matrix that converts coordinates
-            # in the ee_link frame to the base_link frame
+            # The `self.get_matrix()` function returns a transformation matrix that converts 
+            # coordinates in the ee_link frame to the base_link frame
             M = self.get_matrix()
 
-            # self.find_ee_pose() gets the translational and rotational difference
-            # from the ee_link to the base_link. Essentially, the ee_link's
+            # The `self.find_ee_pose()` function gets the translational and rotational 
+            # difference from the ee_link to the base_link. Essentially, the ee_link's
             # coordinates in reference to the base_link tf.
             ee_trans, ee_rot = self.find_ee_pose()
 
@@ -197,8 +196,8 @@ class IrradianceVectors(object):
         circles = []
         for r, n in zip(r, n):
             t = np.linspace(0, 2*np.pi, n, endpoint=False)
-            z = r * np.cos(t)
-            y = r * np.sin(t)
+            z = 10**-2*r * np.cos(t)
+            y = 10**-2*r * np.sin(t)
             x = [0.3]*len(z)
             circles.append(np.c_[x, y, z])
             concatenate = np.concatenate( circles, axis=0 )
