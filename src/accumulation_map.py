@@ -6,6 +6,7 @@ import numpy as np
 import octomap
 
 # Import message types and other pyton libraries
+from scipy import spatial
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 from sensor_msgs.msg import PointCloud2, PointCloud
@@ -44,7 +45,7 @@ class AccumulationMap:
         # The required UV Dose for a UV rate constant of 0.0867 m^2/J is 132.8 (J/m^2)
         self.required_dose = 132.8
 
-        # Set a previous time as none. This will be used for [ADD HERE]
+        # Set a previous time 
         self.prev_time = rospy.get_time()
 
         # Initialize OcTree function with a resolution of 0.05 meters
@@ -69,13 +70,17 @@ class AccumulationMap:
 
         # Parse the filtered cloud's points as a np.array. This action is required
         # to pass as an agrument in the insertPointCloud() function.
-        points = np.empty(shape=[len(self.filtered_cloud.points),3])
+        self.points = np.empty(shape=[len(self.filtered_cloud.points),3])
         for i in range(len(self.filtered_cloud.points)):
-            points[i] = [self.filtered_cloud.points[i].x,
-                         self.filtered_cloud.points[i].y,
-                         self.filtered_cloud.points[i].z]
+            self.points[i] = [self.filtered_cloud.points[i].x,
+                              self.filtered_cloud.points[i].y,
+                              self.filtered_cloud.points[i].z]
 
-        self.octree.insertPointCloud(pointcloud = points, origin = np.array([0, 0, 0], dtype=float))
+        # Insert a 3D scaninto the the tree
+        self.octree.insertPointCloud(pointcloud = self.points, origin = np.array([0, 0, 0], dtype=float))\
+
+        # Instanstiate a `spatial.KDTree()` object and provide self.points as an arugment
+        self.tree = spatial.KDTree(self.points)
 
     def callback_stop_command(self, msg):
         """
@@ -84,7 +89,10 @@ class AccumulationMap:
         :param self: The self reference.
         :param msg: The String message type.
         """
-        # self.command = msg
+        # Deletes the complete tree structure
+        self.octree.clear()
+
+        # Delete the values in both self.hit_list and self.acc_map_list
         del self.hit_list[:], self.acc_map_list[:]
 
     def irradiance_vectors(self, msg):
@@ -100,16 +108,18 @@ class AccumulationMap:
         if (rospy.get_time() - self.prev_time) > 2.0:
             self.prev_time = None
 
-        # A conditional statement for the first  or reset of the prev_time variable.
-        # If true, then the self.prev_time is defined and the the hit list and accumulation
-        # map lists are cleared out
+        # A conditional statement for the first or reset of the self.prev_time variable.
+        # If true, then the self.prev_time is defined and the self.hit_list and 
+        # self.accumulation_map lists are cleared out
         if self.prev_time == None:
             self.prev_time = rospy.get_time()
             del self.hit_list[:], self.acc_map_list[:]
 
+        # Compute the UV time exposure 
+        time_exposure = abs(rospy.get_time() - self.prev_time)
 
-        # Extract the end effector location data. NOTE: These coordinates are
-        # referencing the base_link transform frame
+        # Extract the end effector location data. 
+        # NOTE: These coordinates are referencing the base_link transform frame
         ee_loc = np.array([msg.data[0], msg.data[1], msg.data[2]], dtype=np.double)
 
         # Extract the direction vectors and their irradiance values 
@@ -118,13 +128,9 @@ class AccumulationMap:
         # end is initializes and set as a zero array where the location of the hit will be stored
         end = np.array([0,0,0], dtype=np.double)
 
-        # Compute the UV time exposure 
-        time_exposure = abs(rospy.get_time() - self.prev_time)
-
         # Use for loop to parse directional vector data and check if each vector
         # hits a occupancy cube in the 3D disinfection grid map.
         for j in range(int(len(dir_ir_vectors)/4)):
-
             vector = np.array([dir_ir_vectors[j*4 + 0],
                                dir_ir_vectors[j*4 + 1],
                                dir_ir_vectors[j*4 + 2]], dtype=np.double)
@@ -149,17 +155,24 @@ class AccumulationMap:
                 ir =  dir_ir_vectors[j*4 + 3]
 
                 # Compute the UV dose for each vector
-                dose = dist_ratio * time_exposure * ir
+                dose = dist_ratio * time_exposure * ir   
 
-                # If end (which was converted to a list using the `tolist()` function) is
-                # in self.hit_list, then update self.acc_map_list 
-                if end.tolist() in self.hit_list:
-                    index = self.hit_list.index(end.tolist())
+                # Use the `query()` method to find the closest neigbor. The method
+                # returns the distance to the nearest neighbor and theindex
+                # of the neighbor in ``self.points``. 
+                neighbor_dist, neighbor_index = self.tree.query(end)
+
+                # Extract the point coordinates
+                closest_neighbor_coordinates = list(self.points[neighbor_index])
+
+                # If closest_neighbor_coordinates is in self.hit_list, then update self.acc_map_list 
+                if closest_neighbor_coordinates in self.hit_list:
+                    index = self.hit_list.index(closest_neighbor_coordinates)
                     self.acc_map_list[index][3] = dose + self.acc_map_list[index][3]
 
                 else:
-                    self.hit_list.append(end.tolist())
-                    self.acc_map_list.append([end.tolist()[0], end.tolist()[1], end.tolist()[2], dose - self.required_dose])
+                    self.hit_list.append(closest_neighbor_coordinates)
+                    self.acc_map_list.append([closest_neighbor_coordinates[0], closest_neighbor_coordinates[1], closest_neighbor_coordinates[2], dose - self.required_dose])
 
         # create an array that has the accumulation map values
         arr = np.array(self.acc_map_list)
@@ -171,7 +184,6 @@ class AccumulationMap:
 
         # Set new prev_time as current time before the beginning of next loop iteration
         self.prev_time = rospy.get_time()
-
 
 if __name__=="__main__":
     # Initialize accumulation_map node
