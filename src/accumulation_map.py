@@ -24,26 +24,33 @@ class AccumulationMap:
         Function that initializes the subscriber, publisher, and other variables.
         :param self: The self reference.
         """
-        # Initialize Subscriber
+        # Initialize Subscribers
         self.vector_sub      = rospy.Subscriber('/vectors',        numpy_msg(Floats), self.irradiance_vectors)
         self.pointcloud_sub  = rospy.Subscriber('/filtered_cloud', PointCloud,        self.callback_pointcloud)
         self.stop_sub        = rospy.Subscriber('/stop',           String,            self.callback_stop_command)
 
-        # Initialize Publisher
-        self.acc_map_pub  = rospy.Publisher('/accumulation_map', HeaderArray, queue_size=10)
+        # Initialize Publishers
+        self.accumulation_map_pub = rospy.Publisher('/accumulation_map', HeaderArray, queue_size=10)
+        self.proximity_sensor_pub = rospy.Publisher('/proximity_sensor', HeaderArray, queue_size=10)
 
         # Create an empty list for future storage of the rays that hit
         self.hit_list = []
 
-        # Create a list of the accumulation map
+        # Assign self.accumulation_map as a HeaderArray() message type
         self.accumulation_map = HeaderArray()
         self.accumulation_map.header = Header()
         self.accumulation_map.header.frame_id = "/base_link"
 
-        self.acc_map_list = []
+        # Assign self.proximity_sensor as a HeaderArray() message type
+        self.proximity_sensor = HeaderArray()
+        self.proximity_sensor.header = Header()
+        self.proximity_sensor.header.frame_id = "/base_link"
+
+        # Create a list that will store the current accumulation map
+        self.temp_acc_map = []
 
         # The required UV Dose for a UV rate constant of 0.0867 m^2/J is 132.8 (J/m^2)
-        self.required_dose = 132.8
+        self.required_dose = -132.8
 
         # Set a previous time 
         self.prev_time = rospy.get_time()
@@ -52,8 +59,11 @@ class AccumulationMap:
         self.resolution = 0.05
         self.octree = octomap.OcTree(self.resolution)
 
-        # Initialize filtered_cloud variable
-        self.filtered_cloud = None
+        # Initialize self.pointcloud variable
+        self.pointcloud = None
+
+        # Initialize self.temp_acc_map variable
+        self.temp_acc_map = None
 
         # Initialize command
         self.command = None
@@ -65,35 +75,34 @@ class AccumulationMap:
         :param self: The self reference.
         :param msg: The PointCloud message type.
         """
-        # Store the filtered point cloud
-        self.filtered_cloud = msg
-
         # Parse the filtered cloud's points as a np.array. This action is required
         # to pass as an agrument in the insertPointCloud() function.
-        self.points = np.empty(shape=[len(self.filtered_cloud.points),3])
-        for i in range(len(self.filtered_cloud.points)):
-            self.points[i] = [self.filtered_cloud.points[i].x,
-                              self.filtered_cloud.points[i].y,
-                              self.filtered_cloud.points[i].z]
+        self.pointcloud = np.empty(shape=[len(msg.points),3])
+        self.temp_acc_map = np.empty(shape=[len(msg.points),4])
+        for i in range(len(msg.points)):
+            self.pointcloud[i] = [msg.points[i].x,
+                                  msg.points[i].y,
+                                  msg.points[i].z]
+
+            self.temp_acc_map[i] = [msg.points[i].x,
+                                    msg.points[i].y,
+                                    msg.points[i].z,
+                                    self.required_dose]
 
         # Insert a 3D scaninto the the tree
-        self.octree.insertPointCloud(pointcloud = self.points, origin = np.array([0, 0, 0], dtype=float))\
+        self.octree.insertPointCloud(pointcloud = self.pointcloud, origin = np.array([0, 0, 0], dtype=float))\
 
-        # Instanstiate a `spatial.KDTree()` object and provide self.points as an arugment
-        self.tree = spatial.KDTree(self.points)
+        # Instanstiate a `spatial.KDTree()` object and provide self.pointcloud as an arugment
+        self.tree = spatial.KDTree(self.pointcloud)
 
     def callback_stop_command(self, msg):
         """
-        A callback function that stores a String message that stops the node from
-        publishing irridance vectors.
+        A callback function that clears out the octree.
         :param self: The self reference.
         :param msg: The String message type.
         """
         # Deletes the complete tree structure
         self.octree.clear()
-
-        # Delete the values in both self.hit_list and self.acc_map_list
-        del self.hit_list[:], self.acc_map_list[:]
 
     def irradiance_vectors(self, msg):
         """
@@ -113,7 +122,6 @@ class AccumulationMap:
         # self.accumulation_map lists are cleared out
         if self.prev_time == None:
             self.prev_time = rospy.get_time()
-            del self.hit_list[:], self.acc_map_list[:]
 
         # Compute the UV time exposure 
         time_exposure = abs(rospy.get_time() - self.prev_time)
@@ -159,28 +167,27 @@ class AccumulationMap:
 
                 # Use the `query()` method to find the closest neigbor. The method
                 # returns the distance to the nearest neighbor and theindex
-                # of the neighbor in ``self.points``. 
+                # of the neighbor in ``self.pointcloud``. 
                 neighbor_dist, neighbor_index = self.tree.query(end)
 
-                # Extract the point coordinates
-                closest_neighbor_coordinates = list(self.points[neighbor_index])
+                self.temp_acc_map[neighbor_index][3] = dose + self.temp_acc_map[neighbor_index][3]
 
-                # If closest_neighbor_coordinates is in self.hit_list, then update self.acc_map_list 
-                if closest_neighbor_coordinates in self.hit_list:
-                    index = self.hit_list.index(closest_neighbor_coordinates)
-                    self.acc_map_list[index][3] = dose + self.acc_map_list[index][3]
+                if j == 0:
+                    prox_array = np.array(Ray_length)
+                    self.proximity_sensor.data = (np.array(prox_array.ravel(), dtype=np.float32))
 
-                else:
-                    self.hit_list.append(closest_neighbor_coordinates)
-                    self.acc_map_list.append([closest_neighbor_coordinates[0], closest_neighbor_coordinates[1], closest_neighbor_coordinates[2], dose - self.required_dose])
-
-        # create an array that has the accumulation map values
-        arr = np.array(self.acc_map_list)
+        # create an array that has the accumulation map values. Then
+        # insert the current time for the stamp
+        arr = np.array(self.temp_acc_map)
         self.accumulation_map.data = (np.array(arr.ravel(), dtype=np.float32))
         self.accumulation_map.header.stamp = rospy.Time.now()
 
-        # Publish the array
-        self.acc_map_pub.publish(self.accumulation_map)
+        # set the time stamp as the same as the accumulation_map header
+        self.proximity_sensor.header.stamp = self.accumulation_map.header.stamp
+
+        # Publish the accumulation_map and proximity_sensor messages
+        self.accumulation_map_pub.publish(self.accumulation_map)
+        self.proximity_sensor_pub.publish(self.proximity_sensor)
 
         # Set new prev_time as current time before the beginning of next loop iteration
         self.prev_time = rospy.get_time()
