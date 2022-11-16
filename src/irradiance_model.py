@@ -37,7 +37,7 @@ def fit(order = 2, plotter = False):
         plt.fill_between(x[0:11], 0 ,best_fit[0:11], facecolor='green', alpha=0.3, zorder=3)
         plt.xlabel('Distance from the Center of Lit Surface $(cm)$', fontsize=14)
         plt.ylabel('Irradiance ($mW/cm^2$)',fontsize=14)
-        plt.title('UV Flashlight at 30$(cm)$ above UV Meter',fontsize=16)
+        plt.title('UV Flashlight at 30$cm$ above UV Meter',fontsize=16)
         plt.legend(['Best Fit Curve', 'Considered UV Irradation','UV Meter Measurements'], fontsize=12)
         # plt.subplots_adjust(left = 0.10, bottom = 0.09, right = 0.99, top =0.94)
         # plt.savefig("distance_vs_irradiance.png", bbox_inches='tight')
