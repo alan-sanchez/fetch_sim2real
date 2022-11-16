@@ -32,11 +32,11 @@ class ExecutePath(object):
         # Initialize subscribers
         self.waypoints_sub  = rospy.Subscriber('waypoints',  PoseArray,         self.callback_waypoints)
         self.velocities_sub = rospy.Subscriber('velocities', numpy_msg(Floats), self.go_to_pose)
+        # self.pause_sub      = rospy.Subscriber('')
 
         # Initialize Publisher
         self.start_pub = rospy.Publisher('start', String, queue_size=10)
         self.stop_pub  = rospy.Publisher('stop',  String, queue_size=10)
-
 
         # First initialize `moveit_commander`
         moveit_commander.roscpp_initialize(sys.argv)
@@ -63,10 +63,6 @@ class ExecutePath(object):
         self.planning_scene = PlanningSceneInterface("base_link")
         # self.planning_scene.removeCollisionObject("Table")
         # self.planning_scene.addBox("Table", size_x=1, size_y=1.5, size_z=0.05, x=1, y=0, z=0.625 )
-
-        # Delcare object from FollowTrajcecotyClient class
-        self.joint_goal=FollowTrajectoryClient()
-        self.joint_goal.init_pose()
 
         # Print out instructions for user input to get things started
         print("")
@@ -106,7 +102,7 @@ class ExecutePath(object):
         self.stop_pub.publish("stop")
 
         # Go back to initail position
-        self.joint_goal.init_pose()
+        self.init_pose()
 
         # Pause the simulation for a couple of seconds
         rospy.sleep(2.5)
@@ -116,51 +112,20 @@ class ExecutePath(object):
         print("====== Press 'Enter' to generate random region =======")
 
 
-class FollowTrajectoryClient(object):
-    """
-    Class that commands the Fetch robot to execute a joint trajectory from a joint
-    goal and return its body configuration to the inital pose.
-    """
-    def __init__(self):
-        """
-        Function that intiailze the MoveGroupInterface and PlanningSceneInterface clients
-        """
-        rospy.loginfo("Waiting for MoveIt...")
-        self.client = MoveGroupInterface("arm_with_torso", "base_link")
-        rospy.loginfo("...connected")
-        self.scene = PlanningSceneInterface("base_link")
-        self.scene.addBox("keepout", 0.2, 0.5, 0.05, 0.15, 0.0, 0.375)
-
-    def init_pose(self, vel = .4):
+    def init_pose(self, vel = 0.2):
         """
         Function that sends a joint goal that moves the Fetch's arm and torso to
         the initial position.
         :param self: The self reference.
         :param vel: Float value for arm velocity.
         """
-        # Padding does not work (especially for self collisions)
-        # So we are adding a box above the base of the robot
-        scene = PlanningSceneInterface("base_link")
-        scene.addBox("keepout", 0.2, 0.5, 0.05, 0.15, 0.0, 0.375)
-
-        # List of joints that will be in motion
-        joints = ["torso_lift_joint", "shoulder_pan_joint", "shoulder_lift_joint", "upperarm_roll_joint",
-                  "elbow_flex_joint", "forearm_roll_joint", "wrist_flex_joint", "wrist_roll_joint"]
+        # Set the velocity for Joint trajectory goal
+        self.group.set_max_velocity_scaling_factor(vel)
 
         # List of joint positions for the initial pose
-        pose = [.05, 1.41, 0.30, -0.22, -2.25, -1.56, 1.80, -0.37,]
-
-        # Move to joint position
-        while not rospy.is_shutdown():
-            result = self.client.moveToJointPosition(joints,
-                                                     pose,
-                                                     tolerance = 0.02,
-                                                     max_velocity_scaling_factor=vel)
-            if result and result.error_code.val == MoveItErrorCodes.SUCCESS:
-                scene.removeCollisionObject("keepout")
-                rospy.loginfo("done")
-                return
-
+        joints = [.05, 1.41, 0.30, -0.22, -2.25, -1.56, 1.80, -0.37,]
+        plan = self.group.go(joints, wait=True)
+       
 
 
 if __name__ == '__main__':
