@@ -146,6 +146,9 @@ class IrradianceVectors(object):
             self.ee_pose_stamped.pose.orientation.w = ee_rot[3]
             self.ee_pose_pub.publish(self.ee_pose_stamped)
 
+            if self.command != "start":
+                break
+
             rate.sleep()
 
     def find_ee_pose(self):
