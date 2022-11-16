@@ -130,30 +130,27 @@ class SyncData:
         """
         # Create dataframe for accumulation_map (df_acc)
         acc_map_data = {}
-        acc_map_data['ROS Time'] = msg1.header.stamp.to_sec()
         for i in range(int(len(msg1.data)/4)):
-            hit_loc = 'hit_loc_' + str(i)
             acc_map_data[hit_loc] = [msg1.data[i*4 + 0],msg1.data[i*4 + 1],msg1.data[i*4 + 2], msg1.data[i*4 + 3]]
 
         # Insert dictionary to the data frame, df_acc
         df_acc = pd.DataFrame([acc_map_data])
 
         # Create dataframe for end effector location (df_ee)
-        ee_data = { 'ROS Time ': msg2.header.stamp.to_sec(),
-                    'Position_x ': msg2.pose.position.x,
-                    'Position_y ': msg2.pose.position.y,
-                    'Position_z ': msg2.pose.position.z,
-                    'Quaternion_x ': msg2.pose.orientation.x,
-                    'Quaternion_y ': msg2.pose.orientation.y,
-                    'Quaternion_z ': msg2.pose.orientation.z,
-                    'Quaternion_w ': msg2.pose.orientation.w}
+        ee_data = { msg2.pose.position.x,
+                    msg2.pose.position.y,
+                    msg2.pose.position.z,
+                    msg2.pose.orientation.x,
+                    msg2.pose.orientation.y,
+                    msg2.pose.orientation.z,
+                    msg2.pose.orientation.w}
 
         df_ee = pd.DataFrame([ee_data])
 
         # Create and append dataframes to .csv file
         if self.add_df_header:
-            df_acc.to_csv('accumulation_map.csv', mode='a', index=False, header=True)
-            df_ee.to_csv('ee_location.csv',       mode='a', index=False, header=True)
+            df_acc.to_csv('accumulation_map.csv', mode='a', index=False, header=False)
+            df_ee.to_csv('ee_location.csv',       mode='a', index=False, header=False)
             self.add_df_header = False
 
         else:
