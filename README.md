@@ -3,13 +3,13 @@
 ## Install
 
 ### Install dependencies
-Make sure that you have [Ubuntu 18.04](https://releases.ubuntu.com/18.04/) and [Melodic](http://wiki.ros.org/melodic/Installation/Ubuntu) installed on your computer. Then install the necessary packages to run the simulation environment with the fetch robot.
+Make sure that your computer has [Ubuntu 18.04](https://releases.ubuntu.com/18.04/) and [Melodic](http://wiki.ros.org/melodic/Installation/Ubuntu) installed. Then, install the necessary packages to run the simulation environment with the fetch robot.
 
 ```
 sudo apt-get update
 sudo apt-get install ros-melodic-fetch*
 ```
-This will install all of the packages related to fetch. Also, the octomap dependencies need to be installed and this can be done running the following commands.
+This will install all of the packages related to fetch. The octomap dependencies also need to be installed, and this can be done by running the following commands.
 ```
 sudo apt-get install ros-melodic-octomap
 sudo apt-get install ros-melodic-octomap-server
@@ -24,7 +24,7 @@ pip3 install pandas
 pip3 install octomap-python --no-binary octomap-python
 
 ```
-If you are having issues running octomap, it may needs other dependencies. If so, use this:
+If you are having issues running octomap, it may need other dependencies. If so, use this:
 
 ```bash
 sudo apt-get install libdynamicedt3d*
@@ -48,7 +48,7 @@ source ~/.bashrc
 ```
 
 ## Getting Started
-Run the below launch files and python node into separate terminals to get things started.
+Run the below launch files and Python node into separate terminals to get things started.
 
 ```bash
 # Terminal 1
@@ -69,6 +69,6 @@ In the second terminal the nodes.launch file. This will activate the rest of the
 # Terminal 2
 roslaunch fetch_sim2real nodes.launch
 ```
-Within the same terminal, press "Enter" on your keyboard and this will generate a random polygon (with a predefined range as to not to exceed the physical limitations of the Fetch robot) and initialize the robot to start disinfecting. Below is a gif for reference.
+Within the same terminal, press "Enter" on your keyboard and this will generate a random polygon (with a predefined range so as not to exceed the physical limitations of the Fetch robot) and initialize the robot to start disinfecting. Below is a gif for reference.
 
 ![](images/reference.gif)
